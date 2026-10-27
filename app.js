@@ -126,6 +126,39 @@
     $('score').textContent = state.score;
   }
 
+  function awardPoint() {
+    state.score++;
+    if (state.mistakes > 0) state.mistakes--;
+    updateScore();
+    syncLevelUi();
+  }
+
+  function registerMistake() {
+    var cfg = LEVELS[state.level];
+
+    if (cfg.penaltyEvery <= 0) return false;
+
+    state.mistakes++;
+
+    if (state.mistakes < cfg.penaltyEvery) {
+      syncLevelUi();
+      return false;
+    }
+
+    state.mistakes = 0;
+
+    var penalty = false;
+
+    if (state.score > 0) {
+      state.score--;
+      updateScore();
+      penalty = true;
+    }
+
+    syncLevelUi();
+    return penalty;
+  }
+
   function showFeedback(text, cls) {
     var f = $('feedback');
     f.textContent = text;
@@ -254,12 +287,14 @@
 
   function syncCooldown() {
     var left = cooldownUntil - Date.now();
-    var label = $('cooldown');
     var opts = document.querySelectorAll('#options .opt');
+    var check = $('check2');
 
     if (left <= 0) {
-      label.textContent = '';
+      $('cooldown').textContent = '';
+      $('cooldown2').textContent = '';
       Array.prototype.forEach.call(opts, function (b) { b.disabled = false; });
+      check.disabled = false;
 
       if (cooldownTimer) {
         clearInterval(cooldownTimer);
@@ -269,8 +304,11 @@
       return;
     }
 
-    label.textContent = 'Можно отвечать через ' + Math.ceil(left / 1000) + ' с';
+    var text = 'Можно отвечать через ' + Math.ceil(left / 1000) + ' с';
+    $('cooldown').textContent = text;
+    $('cooldown2').textContent = text;
     Array.prototype.forEach.call(opts, function (b) { b.disabled = true; });
+    check.disabled = true;
 
     if (!cooldownTimer) cooldownTimer = setInterval(syncCooldown, 250);
   }
@@ -296,7 +334,7 @@
     var cfg = LEVELS[state.level];
     var clock = $('clock');
 
-    if (state.mode === 1 && cfg.minutes) {
+    if ((state.mode === 1 || state.mode === 2) && cfg.minutes) {
       clock.classList.add('minutes-on');
     } else {
       clock.classList.remove('minutes-on');
@@ -316,11 +354,12 @@
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
 
-    if (cfg.penaltyEvery > 0) {
-      $('mistakes').textContent = 'ошибки: ' + state.mistakes + ' из ' + cfg.penaltyEvery;
-    } else {
-      $('mistakes').textContent = '';
-    }
+    var mistakes = cfg.penaltyEvery > 0
+      ? 'ошибки: ' + state.mistakes + ' из ' + cfg.penaltyEvery
+      : '';
+
+    $('mistakes').textContent = mistakes;
+    $('mistakes2').textContent = mistakes;
   }
 
   function setLevel(level) {
@@ -336,13 +375,9 @@
     startCooldown();
 
     var p = pairLabel(state.answer);
-    var cfg = LEVELS[state.level];
 
     if (value === state.answer) {
-      state.score++;
-      if (state.mistakes > 0) state.mistakes--;
-      updateScore();
-      syncLevelUi();
+      awardPoint();
       btn.classList.add('ok');
       showFeedback('Верно! ' + p.h12 + ' = ' + p.h24a + ' или ' + p.h24b, 'good');
       schedule(nextTask, 1100);
@@ -354,23 +389,7 @@
         if (+kids[i].dataset.t === state.answer) kids[i].classList.add('ok');
       }
 
-      var penalty = false;
-
-      if (cfg.penaltyEvery > 0) {
-        state.mistakes++;
-
-        if (state.mistakes >= cfg.penaltyEvery) {
-          state.mistakes = 0;
-
-          if (state.score > 0) {
-            state.score--;
-            updateScore();
-            penalty = true;
-          }
-        }
-
-        syncLevelUi();
-      }
+      var penalty = registerMistake();
 
       showFeedback(
         'Правильный ответ: ' + p.h12 + ' = ' + p.h24a + ' или ' + p.h24b +
@@ -383,7 +402,7 @@
 
   /* ---------- РЕЖИМ 2 ---------- */
   function checkTyped() {
-    if (state.locked) return;
+    if (state.locked || coolingDown()) return;
 
     var hv = $('hh').value.trim();
     var mv = $('mm').value.trim();
@@ -402,6 +421,7 @@
     }
 
     state.locked = true;
+    startCooldown();
 
     // принимаем оба 24-часовых варианта, т.к. на 12-часовом циферблате они одинаковы
     var typed = h * 60 + m;
@@ -409,14 +429,18 @@
              (visualKey(typed) === visualKey(state.answer));
 
     if (ok) {
-      state.score++;
-      updateScore();
+      awardPoint();
       var p = pairLabel(state.answer);
       showFeedback('Правильно! ' + p.h12 + ' = ' + p.h24a + ' или ' + p.h24b, 'good');
       schedule(nextTask, 1200);
     } else {
+      var penalty = registerMistake();
       var p2 = pairLabel(state.answer);
-      showFeedback('Пока нет. Правильно: ' + p2.h12 + ' = ' + p2.h24a + ' или ' + p2.h24b, 'bad');
+      showFeedback(
+        'Пока нет. Правильно: ' + p2.h12 + ' = ' + p2.h24a + ' или ' + p2.h24b +
+        (penalty ? ' (−1 балл)' : ''),
+        'bad'
+      );
       schedule(nextTask, 2400);
     }
   }
@@ -450,7 +474,7 @@
       setClock(state.answer);
       renderOptions(buildOptions(state.answer, state.level), state.level);
     } else if (state.mode === 2) {
-      state.answer = randomTime(5);
+      state.answer = randomTime(LEVELS[state.level].step);
       setClock(state.answer);
       $('hh').value = '';
       $('mm').value = '';

@@ -4,10 +4,11 @@ schema: spec-driven
 # Add only constraints that should guide OpenSpec artifacts and workflows.
 # Include constraints an agent cannot infer by reading the code.
 # Keep general project documentation and discoverable codebase facts out.
-# Example:
-#   context: |
-#     Designs and tasks must cover Windows, macOS, and Linux
-#     Write all artifacts in Spanish
+context: |
+  Verification is manual: a person loads the page in a real browser and exercises the modes.
+  Do not add Playwright, Puppeteer, Selenium, jsdom, DOM harnesses, or any other automated
+  browser/UI tests to this repository. Verification scenarios in specs and tasks describe
+  what a person clicks and sees, and implementation is accepted only after the user checks it by hand.
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.

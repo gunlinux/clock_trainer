@@ -148,11 +148,11 @@ h1{
   display:none;
 }
 
-#mistakes{
+#mistakes,#mistakes2{
   color:#b45309;
 }
 
-#cooldown{
+#cooldown,#cooldown2{
   color:#6366f1;
 }
 
@@ -399,6 +399,11 @@ svg#clock{
   border:none;
   cursor:pointer;
   transition:.15s;
+}
+
+.btn:disabled{
+  opacity:.55;
+  cursor:default;
 }
 
 .btn.primary{

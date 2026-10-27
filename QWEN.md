@@ -24,13 +24,13 @@ No build step exists. Open `index.html` directly, or serve the folder to avoid a
 python3 -m http.server 8000   # then open http://localhost:8000
 ```
 
-There are no tests, no linter, and no type checker. Verification is manual, by loading the page and exercising each tab:
+There are no tests, no linter, and no type checker. Verification is manual and performed by the user in a real browser: do not add Playwright, Puppeteer, Selenium, jsdom, DOM harnesses, or any other automated UI tests. Load the page and exercise each tab:
 
 1. **Выбери время** — three difficulty levels chosen in the panel; four options, exactly one is correct; wrong pick highlights the right option and advances after ~2.3 s. Level 1 (easy): minute labels 5–60 on the dial, time always a multiple of 5. Level 2 (medium): no dial labels, time still a multiple of 5, every third mistake costs a point. Level 3 (hard): no minute labels, any minute, at least three options share the same 24-hour hour, every second mistake costs a point; its options show only the 24-hour reading, while feedback still lists both. On levels 1–2 an option pairs its 12-hour reading with a 24-hour one that always differs, using the +12-hour twin when the plain 24-hour form would repeat the first line. On levels 2–3 a correct answer removes one accumulated mistake (never below zero). The score never goes below zero.
-2. **Запиши время** — typing two characters in the hours field jumps focus to minutes; `Enter` submits; invalid input shows a validation message without locking the task.
+2. **Запиши время** — shares the three levels and the selected level with mode 1: level 1 shows minute labels 5–60 and times are multiples of 5, level 2 has no labels and times are still multiples of 5, level 3 has no labels and any minute, so the answer must be exact to the minute. Typing two characters in the hours field jumps focus to minutes; `Enter` submits; both the exact 24-hour reading and its +12-hour twin are accepted. Invalid input shows a validation message without locking the task. Levels 2–3 show the mistake counter and charge the same penalties; every valid answer starts the same 5 s pause, during which **Проверить** is disabled.
 3. **Поставь время** — buttons move the digital display by ±1 h / ±5 min and wrap past midnight; match the announced target.
 4. Score increments only on a correct answer; **Сброс** zeroes it and deals a new task.
-5. In mode 1, answers are accepted at most once every 5 seconds: after each answer the options are disabled with a visible countdown, while the next task still appears on the usual ~1.1 s / ~2.3 s delay.
+5. In modes 1–2, answers are accepted at most once every 5 seconds: after each answer the options (mode 1) or **Проверить** (mode 2) are disabled with a visible countdown, while the next task still appears on the usual ~1.1–1.2 s / ~2.3–2.4 s delay.
 
 Check the console for errors after changing `app.js` — there is no other safety net.
 
@@ -42,7 +42,7 @@ Check the console for errors after changing `app.js` — there is no other safet
 
 **Hand animation.** `hAngle` / `mAngle` are cumulative, not absolute. `setClock()` adds `shortestDelta(current, target)` so hands always take the short way around instead of unwinding backwards, and the CSS transition animates the difference. If you ever reset these accumulators, the hands will visibly spin.
 
-**Task state.** A single `{ mode, level, answer, score, mistakes, locked }` object. `answer` is *total minutes since midnight* (0–1439). `level` (1–3) only affects mode 1 and is described by the `LEVELS` table (`step`, `minutes`, `penaltyEvery`). `locked` prevents double-scoring while the feedback delay is pending. `mistakes` counts failures since the last penalty.
+**Task state.** A single `{ mode, level, answer, score, mistakes, locked }` object. `answer` is *total minutes since midnight* (0–1439). `level` (1–3) is shared by modes 1 and 2 and is described by the `LEVELS` table (`step`, `minutes`, `penaltyEvery`). `locked` prevents double-scoring while the feedback delay is pending. `mistakes` counts failures since the last penalty and is shared by both modes. `awardPoint()` and `registerMistake()` own the scoring and penalty rules for every handler.
 
 **Single shared timer.** `schedule(fn, ms)` calls `clearTimeout` on one shared `timer` variable, so only one pending advance can exist. Every mode transition must cancel/reset it — `nextTask()` does `clearTimeout(timer)` up front.
 
@@ -56,7 +56,7 @@ The app deliberately mixes a **12-hour analog face** with **24-hour answers**.
 
 Consequences already encoded in the code:
 
-- `randomTime(step)` picks hours from 0–23, so tasks are always announced in 24-hour form (needed for mode 3's target); `step` is 5 for modes 2–3 and `LEVELS[state.level].step` for mode 1 (5 on levels 1–2, 1 on level 3).
+- `randomTime(step)` picks hours from 0–23, so tasks are always announced in 24-hour form (needed for mode 3's target); `step` is `LEVELS[state.level].step` for modes 1–2 (5 on levels 1–2, 1 on level 3) and 5 for mode 3.
 - Mode 2 (`checkTyped`) is correct when `typed === answer` **or** `visualKey(typed) === visualKey(answer)`.
 - `buildOptions()` deduplicates distractors by `visualKey`, not by raw value, so two options can never occupy the same visible hand position.
 - `nextTask()` for mode 3 re-rolls the starting position while `visualKey(start) === visualKey(answer)`, otherwise the task would be solved before the first click.
@@ -82,7 +82,7 @@ Four touch points, in order:
 
 1. `index.html` — add `<button class="tab" data-mode="4">…</button>` and `<div class="panel" id="panel4">…</div>`.
 2. `app.js` — add an `else if (state.mode === 4)` branch in `nextTask()` that sets `state.answer`, renders the clock/digital display, and clears `state.locked`.
-3. `app.js` — add the answer handler; it must set `state.locked = true`, award via `state.score++` + `updateScore()`, show feedback, and call `schedule(nextTask, …)`.
+3. `app.js` — add the answer handler; it must set `state.locked = true`, award via `awardPoint()`, show feedback, and call `schedule(nextTask, …)`; a wrong answer uses `registerMistake()` for the shared penalty rules.
 4. `styles.css` — only if the new panel needs layout beyond `.panel` / `.q` / `.btn`.
 
 Mode switching is generic (`data-mode`, `#panelN`, `state.mode`), so no extra wiring is needed for the tab itself.
@@ -90,8 +90,11 @@ Mode switching is generic (`data-mode`, `#panelN`, `state.mode`), so no extra wi
 ## Gotchas
 
 - Task advance uses two magic delays per path (~1.1–1.6 s on success, 2.3–2.4 s on failure); if you change them, keep success shorter than failure.
-- The mode 1 answer cooldown (`cooldownUntil`, 5 s) drives its own `setInterval` that toggles `.opt` `disabled` and the `#cooldown` text. Never route it through `schedule()`: that would cancel the single shared `timer` and with it the pending task advance.
-- `#clock.minutes-on` belongs to mode 1 level 1 only — `syncLevelUi()` checks `state.mode` and `LEVELS[state.level].minutes`, so switching tabs or levels hides the minute labels and returning to level 1 restores them.
+- The answer cooldown (`cooldownUntil`, 5 s) is shared by modes 1 and 2 and drives its own `setInterval` that toggles `.opt` and `#check2` `disabled` and writes the `#cooldown` / `#cooldown2` text. Never route it through `schedule()`: that would cancel the single shared `timer` and with it the pending task advance.
+- `#clock.minutes-on` belongs to level 1 of modes 1 and 2 — `syncLevelUi()` checks `state.mode` and `LEVELS[state.level].minutes`, so switching tabs or levels hides the minute labels and returning to level 1 restores them.
+- `state.level` and `state.mistakes` are shared by modes 1 and 2; both panels contain the same `.lvl` markup, and every `.lvl` is wired once at startup, so new level buttons must be static markup above `<script>`.
+- `#mistakes` and `#mistakes2` are written only by `syncLevelUi()`; keep that single writer so the two counters cannot drift.
+- In mode 2 the pause disables only `#check2`; `#hh` and `#mm` stay editable, and `checkTyped()` guards both the button and `Enter` via `state.locked || coolingDown()`.
 - Option labels on levels 1–2 must use `pairLabel().h24alt`, never `.h24`: for hours 1–12 the plain 24-hour reading repeats the 12-hour line.
 - `#hh` autofocus in mode 2 is gated on `matchMedia('(min-width: 700px)')` to avoid popping the mobile keyboard.
 - The digital colon blinks via a CSS `steps(1)` animation — parent-visibility changes restart it, which is harmless but can look like a flicker on mode entry.

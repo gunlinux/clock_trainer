@@ -51,7 +51,16 @@
   </div>
 
   <div class="panel" id="panel2">
+    <div class="levels" id="levels2">
+      <button class="lvl active" data-level="1" aria-pressed="true">Легко</button>
+      <button class="lvl" data-level="2" aria-pressed="false">Средне</button>
+      <button class="lvl" data-level="3" aria-pressed="false">Сложно</button>
+    </div>
     <p class="q">Запиши время цифрами (24 часа)</p>
+    <div class="meta">
+      <span id="mistakes2"></span>
+      <span id="cooldown2"></span>
+    </div>
     <div class="time-input">
       <input id="hh" class="tin" type="text" inputmode="numeric" maxlength="2" placeholder="ЧЧ" autocomplete="off">
       <span class="sep">:</span>
