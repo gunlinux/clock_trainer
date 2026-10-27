@@ -203,6 +203,11 @@
     return ((t % 720) + 720) % 720;
   }
 
+  function dualLabel(t) {
+    var p = pairLabel(t);
+    return p.h24a + ' / ' + p.h24b;
+  }
+
   function buildOptions(ans, level) {
     var cfg = LEVELS[level];
     var ah = Math.floor(ans / 60);
@@ -374,6 +379,14 @@
       clock.classList.remove('drag-on');
     }
 
+    var panel3 = $('panel3');
+
+    if (state.mode === 3 && state.level > 1) {
+      panel3.classList.add('readout-off');
+    } else {
+      panel3.classList.remove('readout-off');
+    }
+
     var lvls = document.querySelectorAll('.lvl');
 
     Array.prototype.forEach.call(lvls, function (b) {
@@ -481,6 +494,12 @@
     $('digH').textContent = pad(dH);
     $('digM').textContent = pad(dM);
 
+    var p = pairLabel(dH * 60 + dM);
+    var a = p.h24a.split(':');
+    var b = p.h24b.split(':');
+    $('digH2').textContent = b[0];
+    $('digM2').textContent = b[1];
+
     setClock(dH * 60 + dM);
 
     if (!state.locked && dH * 60 + dM === state.answer) {
@@ -488,7 +507,6 @@
       state.score++;
       updateScore();
 
-      var p = pairLabel(state.answer);
       showFeedback('Отлично! ' + p.h12 + ' = ' + p.h24a + ' или ' + p.h24b, 'good');
       showNext();
       setAnswerControls(false);
@@ -634,7 +652,7 @@
       if (window.matchMedia('(min-width: 700px)').matches) $('hh').focus();
     } else {
       state.answer = randomTime(5);
-      $('target3').textContent = pairLabel(state.answer).h24;
+      $('target3').textContent = dualLabel(state.answer);
 
       var start = randomTime(5);
       var guard = 0;

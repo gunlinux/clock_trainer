@@ -569,21 +569,32 @@ svg#clock{
   justify-content:center;
   align-items:baseline;
   gap:2px;
-  font-size:50px;
+  font-size:clamp(26px,7.6vw,40px);
   font-weight:900;
   font-variant-numeric:tabular-nums;
   color:#1e293b;
   background:#f1f5ff;
   border-radius:18px;
-  padding:8px 22px;
+  padding:8px 18px;
   margin:0 auto 14px;
   width:max-content;
-  letter-spacing:2px;
+  letter-spacing:1.5px;
+  white-space:nowrap;
 }
 
 .digital .colon{
   color:#6366f1;
   animation:blink 1s steps(1) infinite;
+}
+
+.digital .digsep{
+  color:#94a3b8;
+  margin:0 5px;
+  font-weight:800;
+}
+
+#panel3.readout-off .digital{
+  display:none;
 }
 
 @keyframes blink{
@@ -641,8 +652,8 @@ svg#clock{
 
 @media (max-width:380px){
   .digital{
-    font-size:42px;
-    padding:6px 16px;
+    font-size:26px;
+    padding:6px 12px;
   }
 
   .opt .t12{

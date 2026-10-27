@@ -69,9 +69,16 @@
   </div>
 
   <div class="panel" id="panel3">
-    <p class="q">Поставь на цифровых часах <b class="target" id="target3">--:--</b></p>
+    <div class="levels" id="levels3">
+      <button class="lvl active" data-level="1" aria-pressed="true">Легко</button>
+      <button class="lvl" data-level="2" aria-pressed="false">Средне</button>
+      <button class="lvl" data-level="3" aria-pressed="false">Сложно</button>
+    </div>
+    <p class="q">Поставь время <b class="target" id="target3">--:--</b></p>
     <div class="digital">
       <span id="digH">00</span><span class="colon">:</span><span id="digM">00</span>
+      <span class="digsep">/</span>
+      <span id="digH2">12</span><span class="colon">:</span><span id="digM2">00</span>
     </div>
     <div class="dbtns">
       <button class="btn" data-act="h-">- 1 час</button>
