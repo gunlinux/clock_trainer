@@ -56,6 +56,7 @@
 
   var hourHand = $('hourHand');
   var minuteHand = $('minuteHand');
+  var clockEl = $('clock');
 
   var hAngle = 0;
   var mAngle = 0;
@@ -95,6 +96,11 @@
   var state = { mode: 1, level: 1, answer: 0, score: 0, mistakes: 0, locked: false };
   var dH = 0;
   var dM = 0;
+  var dragHand = null;
+  var dragPointer = null;
+  var dragStartHour = 0;
+  var dragTurn = 0;
+  var dragPrev = 0;
   var timer = null;
   var cooldownUntil = 0;
   var cooldownTimer = null;
@@ -340,6 +346,12 @@
       clock.classList.remove('minutes-on');
     }
 
+    if (state.mode === 3) {
+      clock.classList.add('drag-on');
+    } else {
+      clock.classList.remove('drag-on');
+    }
+
     var lvls = document.querySelectorAll('.lvl');
 
     Array.prototype.forEach.call(lvls, function (b) {
@@ -463,9 +475,122 @@
     }
   }
 
+  /* ---------- РЕЖИМ 3: перетаскивание стрелок ---------- */
+  var HAND_HIT_ANGLE = 18;
+  var CENTER_DEAD_ZONE = 18;
+  var OVERLAP_SPLIT_RADIUS = 45;
+
+  function pointerAngle(e) {
+    var rect = clockEl.getBoundingClientRect();
+
+    if (!rect.width || !rect.height) return null;
+
+    var x = (e.clientX - rect.left) * 200 / rect.width;
+    var y = (e.clientY - rect.top) * 200 / rect.height;
+    var dx = x - 100;
+    var dy = y - 100;
+    var angle = Math.atan2(dx, -dy) * 180 / Math.PI;
+
+    if (angle < 0) angle += 360;
+
+    return { angle: angle, r: Math.sqrt(dx * dx + dy * dy) };
+  }
+
+  function pickHand(angle, r) {
+    var minuteAngle = (dM * 6) % 360;
+    var hourAngle = ((dH % 12 + dM / 60) * 30) % 360;
+    var dm = Math.abs(shortestDelta(minuteAngle, angle));
+    var dh = Math.abs(shortestDelta(hourAngle, angle));
+
+    if (r < CENTER_DEAD_ZONE || Math.min(dm, dh) > HAND_HIT_ANGLE) return null;
+
+    if (Math.abs(dm - dh) < 1) return r > OVERLAP_SPLIT_RADIUS ? 'minute' : 'hour';
+
+    return dm < dh ? 'minute' : 'hour';
+  }
+
+  function applyDrag(angle) {
+    if (dragHand === 'minute') {
+      var total = dragTurn / 6;
+      var snapped = Math.round(total / 5) * 5;
+      dM = ((snapped % 60) + 60) % 60;
+      dH = ((dragStartHour + Math.floor(snapped / 60)) % 24 + 24) % 24;
+    } else {
+      var h12 = Math.floor(angle / 30) % 12;
+      dH = dH >= 12 ? (h12 + 12) % 24 : h12;
+    }
+
+    renderDigital();
+  }
+
+  function endDrag(e) {
+    if (dragHand === null) return;
+
+    if (e && dragPointer !== null && e.pointerId !== dragPointer) return;
+
+    if (e && clockEl.hasPointerCapture && clockEl.hasPointerCapture(e.pointerId)) {
+      try { clockEl.releasePointerCapture(e.pointerId); } catch (err) {}
+    }
+
+    dragHand = null;
+    dragPointer = null;
+    clockEl.classList.remove('dragging');
+  }
+
+  function onPointerDown(e) {
+    if (state.mode !== 3 || state.locked || dragHand !== null) return;
+
+    var p = pointerAngle(e);
+    if (!p) return;
+
+    var hand = pickHand(p.angle, p.r);
+    if (!hand) return;
+
+    e.preventDefault();
+
+    dragHand = hand;
+    dragPointer = e.pointerId;
+    dragStartHour = dH;
+    dragTurn = p.angle;
+    dragPrev = p.angle;
+    clockEl.classList.add('dragging');
+
+    if (clockEl.setPointerCapture) {
+      try { clockEl.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+
+    applyDrag(p.angle);
+
+    if (state.locked) endDrag(e);
+  }
+
+  function onPointerMove(e) {
+    if (dragHand === null || e.pointerId !== dragPointer) return;
+
+    if (state.locked) {
+      endDrag(e);
+      return;
+    }
+
+    var p = pointerAngle(e);
+    if (!p) return;
+
+    e.preventDefault();
+
+    if (dragHand === 'minute') {
+      dragTurn += shortestDelta(dragPrev, p.angle);
+      dragPrev = p.angle;
+    }
+
+    applyDrag(p.angle);
+
+    if (state.locked) endDrag(e);
+  }
+
   /* ---------- Новое задание ---------- */
   function nextTask() {
     clearTimeout(timer);
+    endDrag();
     state.locked = false;
     hideFeedback();
 
@@ -558,6 +683,12 @@
       renderDigital();
     });
   });
+
+  /* ---------- Режим 3: перетаскивание стрелок ---------- */
+  clockEl.addEventListener('pointerdown', onPointerDown);
+  clockEl.addEventListener('pointermove', onPointerMove);
+  clockEl.addEventListener('pointerup', endDrag);
+  clockEl.addEventListener('pointercancel', endDrag);
 
   /* ---------- Уровни сложности ---------- */
   var lvlBtns = document.querySelectorAll('.lvl');

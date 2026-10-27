@@ -233,6 +233,19 @@ svg#clock{
   stroke-width:4;
 }
 
+#clock.drag-on{
+  cursor:grab;
+  touch-action:none;
+}
+
+#clock.dragging{
+  cursor:grabbing;
+}
+
+#clock.dragging .hand{
+  transition:none;
+}
+
 .pin{
   fill:#6366f1;
 }
