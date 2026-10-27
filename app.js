@@ -91,9 +91,9 @@
     3: { step: 1, minutes: false, penaltyEvery: 2 }
   };
 
-  var COOLDOWN_MS = 5000;
+  var COOLDOWN_MS = 3000;
 
-  var state = { mode: 1, level: 1, answer: 0, score: 0, mistakes: 0, locked: false };
+  var state = { mode: 1, level: 1, answer: 0, score: 0, mistakes: 0, locked: false, heartsDown: false };
   var dH = 0;
   var dM = 0;
   var dragHand = null;
@@ -134,7 +134,8 @@
 
   function awardPoint() {
     state.score++;
-    if (state.mistakes > 0) state.mistakes--;
+    state.mistakes = 0;
+    state.heartsDown = false;
     updateScore();
     syncLevelUi();
   }
@@ -151,8 +152,6 @@
       return false;
     }
 
-    state.mistakes = 0;
-
     var penalty = false;
 
     if (state.score > 0) {
@@ -161,6 +160,7 @@
       penalty = true;
     }
 
+    state.heartsDown = true;
     syncLevelUi();
     return penalty;
   }
@@ -335,6 +335,71 @@
     syncCooldown();
   }
 
+  /* --- Сердца-жизни на уровнях 2-3 --- */
+  function playHeartAnim(heart, cls) {
+    heart.classList.remove(cls);
+    void heart.offsetWidth;
+    heart.classList.add(cls);
+
+    heart.addEventListener('animationend', function onEnd() {
+      heart.classList.remove(cls);
+      heart.removeEventListener('animationend', onEnd);
+    });
+  }
+
+  function syncHearts(el, total) {
+    if (!el) return;
+
+    if (total <= 0) {
+      el.textContent = '';
+      el.removeAttribute('role');
+      el.removeAttribute('aria-label');
+      el.dataset.hearts = '0';
+      return;
+    }
+
+    var filled = total - state.mistakes;
+    if (filled < 0) filled = 0;
+
+    if (el.dataset.hearts !== String(total)) {
+      el.dataset.hearts = String(total);
+      el.className = 'hearts';
+      el.setAttribute('role', 'img');
+      el.innerHTML = '';
+
+      for (var i = 0; i < total; i++) {
+        var heart = document.createElement('span');
+        var lost = i >= filled;
+
+        heart.className = lost ? 'heart lost' : 'heart';
+        heart.dataset.lost = lost ? '1' : '0';
+        heart.setAttribute('aria-hidden', 'true');
+        heart.textContent = '♥';
+        el.appendChild(heart);
+      }
+    }
+
+    var hearts = el.children;
+
+    for (var j = 0; j < hearts.length; j++) {
+      var h = hearts[j];
+      var shouldLost = j >= filled;
+      var wasLost = h.dataset.lost === '1';
+
+      if (shouldLost && !wasLost) {
+        h.classList.add('lost');
+        playHeartAnim(h, 'burn');
+      } else if (!shouldLost && wasLost) {
+        h.classList.remove('lost');
+        playHeartAnim(h, 'return');
+      }
+
+      h.dataset.lost = shouldLost ? '1' : '0';
+    }
+
+    el.setAttribute('aria-label', 'жизни: ' + filled + ' из ' + total);
+  }
+
   /* --- Оформление, зависящее от уровня --- */
   function syncLevelUi() {
     var cfg = LEVELS[state.level];
@@ -366,17 +431,14 @@
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
 
-    var mistakes = cfg.penaltyEvery > 0
-      ? 'ошибки: ' + state.mistakes + ' из ' + cfg.penaltyEvery
-      : '';
-
-    $('mistakes').textContent = mistakes;
-    $('mistakes2').textContent = mistakes;
+    syncHearts($('mistakes'), cfg.penaltyEvery);
+    syncHearts($('mistakes2'), cfg.penaltyEvery);
   }
 
   function setLevel(level) {
     state.level = level;
     state.mistakes = 0;
+    state.heartsDown = false;
     syncLevelUi();
     nextTask();
   }
@@ -591,6 +653,13 @@
   function nextTask() {
     clearTimeout(timer);
     endDrag();
+
+    if (state.heartsDown) {
+      state.heartsDown = false;
+      state.mistakes = 0;
+      syncLevelUi();
+    }
+
     state.locked = false;
     hideFeedback();
 
@@ -704,6 +773,7 @@
   $('reset').addEventListener('click', function () {
     state.score = 0;
     state.mistakes = 0;
+    state.heartsDown = false;
     stopCooldown();
     updateScore();
     syncLevelUi();
