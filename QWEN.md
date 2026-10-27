@@ -26,7 +26,7 @@ python3 -m http.server 8000   # then open http://localhost:8000
 
 There are no tests, no linter, and no type checker. Verification is manual, by loading the page and exercising each tab:
 
-1. **Выбери время** — three difficulty levels chosen in the panel; four options, exactly one is correct; wrong pick highlights the right option and advances after ~2.3 s. Level 1 (easy): minute labels 5–60 on the dial, time always a multiple of 5. Level 2 (medium): no dial labels, time still a multiple of 5, every third mistake costs a point. Level 3 (hard): no minute labels, any minute, at least three options share the same 24-hour hour, every second mistake costs a point; its options show only the 24-hour reading, while feedback still lists both. On levels 2–3 a correct answer removes one accumulated mistake (never below zero). The score never goes below zero.
+1. **Выбери время** — three difficulty levels chosen in the panel; four options, exactly one is correct; wrong pick highlights the right option and advances after ~2.3 s. Level 1 (easy): minute labels 5–60 on the dial, time always a multiple of 5. Level 2 (medium): no dial labels, time still a multiple of 5, every third mistake costs a point. Level 3 (hard): no minute labels, any minute, at least three options share the same 24-hour hour, every second mistake costs a point; its options show only the 24-hour reading, while feedback still lists both. On levels 1–2 an option pairs its 12-hour reading with a 24-hour one that always differs, using the +12-hour twin when the plain 24-hour form would repeat the first line. On levels 2–3 a correct answer removes one accumulated mistake (never below zero). The score never goes below zero.
 2. **Запиши время** — typing two characters in the hours field jumps focus to minutes; `Enter` submits; invalid input shows a validation message without locking the task.
 3. **Поставь время** — buttons move the digital display by ±1 h / ±5 min and wrap past midnight; match the announced target.
 4. Score increments only on a correct answer; **Сброс** zeroes it and deals a new task.
@@ -92,6 +92,7 @@ Mode switching is generic (`data-mode`, `#panelN`, `state.mode`), so no extra wi
 - Task advance uses two magic delays per path (~1.1–1.6 s on success, 2.3–2.4 s on failure); if you change them, keep success shorter than failure.
 - The mode 1 answer cooldown (`cooldownUntil`, 5 s) drives its own `setInterval` that toggles `.opt` `disabled` and the `#cooldown` text. Never route it through `schedule()`: that would cancel the single shared `timer` and with it the pending task advance.
 - `#clock.minutes-on` belongs to mode 1 level 1 only — `syncLevelUi()` checks `state.mode` and `LEVELS[state.level].minutes`, so switching tabs or levels hides the minute labels and returning to level 1 restores them.
+- Option labels on levels 1–2 must use `pairLabel().h24alt`, never `.h24`: for hours 1–12 the plain 24-hour reading repeats the 12-hour line.
 - `#hh` autofocus in mode 2 is gated on `matchMedia('(min-width: 700px)')` to avoid popping the mobile keyboard.
 - The digital colon blinks via a CSS `steps(1)` animation — parent-visibility changes restart it, which is harmless but can look like a flicker on mode entry.
 - `.digital` uses `width:max-content` plus `margin:0 auto`; adding a flex child there can break the centering that the 380px breakpoint relies on.

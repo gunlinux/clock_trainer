@@ -149,9 +149,13 @@
     var b = (h24 + 12) % 24;
     if (a > b) { var tmp = a; a = b; b = tmp; }
 
+    // 24ч чтение, которое всегда отличается от 12ч: для часов 1-12 берём двойник
+    var alt = (h24 >= 1 && h24 <= 12) ? (h24 + 12) % 24 : h24;
+
     return {
       h12: h12 + ':' + pad(m),
       h24: pad(h24) + ':' + pad(m),   // тот, что реально загадан
+      h24alt: pad(alt) + ':' + pad(m), // альтернативное 24ч чтение для вариантов
       h24a: pad(a) + ':' + pad(m),    // меньший 24ч
       h24b: pad(b) + ':' + pad(m)     // больший 24ч
     };
@@ -234,7 +238,7 @@
       b.innerHTML = level === 3
         ? '<span class="t24">' + p.h24 + '</span>'
         : '<span class="t12">' + p.h12 + '</span>' +
-          '<span class="t24">' + p.h24 + '</span>';
+          '<span class="t24">' + p.h24alt + '</span>';
 
       b.addEventListener('click', function () { pickOption(b, value); });
       box.appendChild(b);
