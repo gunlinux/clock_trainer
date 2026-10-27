@@ -10,9 +10,9 @@ There is no framework, no bundler, no package manager, and no network calls. It 
 
 | File | Role |
 | --- | --- |
-| `index.html` | Static markup for the header, the score pill, the three mode tabs, the SVG clock, and one panel per mode. |
-| `app.js` | Everything else: builds the clock face, generates tasks, validates answers, manages score and mode switching. |
-| `styles.css` | All styling, animations, and the single `@media (max-width:380px)` breakpoint. |
+| `index.html` | Static markup for the header (score, «Сброс», «Помощь»), the three mode tabs, the SVG clock, one panel per mode, and the help overlay. |
+| `app.js` | Everything else: builds the clock face, generates tasks, validates answers, manages score, mode switching and the help overlay. |
+| `styles.css` | All styling, animations, and the `@media (max-width:440px)` / `@media (max-width:380px)` breakpoints. |
 
 Git history is a single commit (`initial`), so there is no established commit-message convention to infer.
 
@@ -31,6 +31,7 @@ There are no tests, no linter, and no type checker. Verification is manual and p
 3. **Поставь время** — buttons move the digital display by ±1 h / ±5 min and wrap past midnight, and the hour or minute hand can be dragged with mouse or finger: minutes snap to 5 and passing 12 carries the hour by one, the hour hand keeps the current minutes and half of the day, and the digital display follows the drag. Match the announced target; after success the message stays until **Дальше**.
 4. Score increments only on a correct answer; **Сброс** zeroes it and deals a new task.
 5. After any valid answer (correct or wrong, or a success in «Поставь время») the message and the **Дальше** button stay until the child presses it: there is no auto-advance, no countdown and no answer cooldown. Until «Дальше» the options, **Проверить** and the clock buttons are disabled.
+6. **Помощь** — the header button opens `clock_help.png` full-screen over the app; the whole image is contained, a click/tap anywhere or `Esc` closes it. Opening or closing help must not change the task, hands, typed values, score, hearts, visible feedback or «Дальше»; page scroll is locked while it is open.
 
 Check the console for errors after changing `app.js` — there is no other safety net.
 
@@ -47,6 +48,8 @@ Check the console for errors after changing `app.js` — there is no other safet
 **Hand dragging.** Mode 3 accepts pointer input on `#clock`: `pointerdown` maps the pointer into the 200×200 viewBox, computes the angle from 12 o'clock, and picks the hand with the smaller angular distance (18° threshold, dead zone r<18; overlapped hands split at r=45 — minute outside, hour inside). Minute drags snap `dM` to the nearest 5 and carry the hour by ±1 whenever the snapped minutes wrap past 60/0 (a full turn of the minute hand); hour drags take the sector `floor(angle / 30) % 12` and keep the current half of the day. Every move calls `renderDigital()`, so the display, hands and auto-check share the buttons' path. `#clock.drag-on` (mode 3 only) enables `touch-action:none` and the grab cursor; `.dragging` disables the hand transition.
 
 **Manual round advance.** After an answer the handlers set `state.locked`, show `#feedback` and unhide `#next`, then disable the answer controls with `setAnswerControls(false)`. `#next` is the only way to continue after an answer; `nextTask()` hides the message and the button, unlocks the round, re-enables the controls and refills hearts. There are no task timers or cooldowns.
+
+**Help overlay.** `#helpOpen` is a header button outside the tabs; `#helpOverlay` sits after `.card` with `role="dialog"`, the single `clock_help.png` image and `tabindex="-1"`. `openHelp()` adds `.open` and `body.help-open`, marks `header`, `.tabs` and `.card` with `inert`, sets `aria-expanded` and focuses the overlay. `closeHelp()` is bound to a `click` anywhere on `#helpOverlay` (the image click bubbles to it) and to `Escape`; it adds `.closing`, hides the layer on the `help-out` `animationend` or a 260 ms fallback timer, then removes the classes, `inert` and the scroll lock and returns focus to `#helpOpen`. The overlay touches none of the task state and is not a mode.
 
 ## Domain Invariant: the 720-Minute Cycle (read this before touching answer logic)
 
@@ -104,3 +107,7 @@ Mode switching is generic (`data-mode`, `#panelN`, `state.mode`), so no extra wi
 - `#hh` autofocus in mode 2 is gated on `matchMedia('(min-width: 700px)')` to avoid popping the mobile keyboard.
 - The digital colon blinks via a CSS `steps(1)` animation — parent-visibility changes restart it, which is harmless but can look like a flicker on mode entry.
 - `.digital` uses `width:max-content` plus `margin:0 auto`; adding a flex child there can break the centering that the 380px breakpoint relies on.
+- Help is not a mode: do not call `nextTask()`, `syncLevelUi()`, `awardPoint()` or `registerMistake()` from the help handlers, and do not let the overlay's click handler reach the tab or answer controls.
+- The help overlay hides via `.open`/`.closing`, not the `hidden` attribute, and `body.help-open` carries `overflow:hidden`; keep `resetHelp()` as the single place that clears the classes, `inert`, `aria-expanded` and the scroll lock.
+- If `prefers-reduced-motion:reduce` is set, `closeHelp()` skips the closing animation and hides the overlay immediately; a new animation name must not break the `help-out` check in the `animationend` handler.
+- The header becomes two rows below 440px so the third pill («Помощь») does not squeeze the title; keep new header controls inside `.hgroup` so that breakpoint still applies.

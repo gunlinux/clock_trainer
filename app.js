@@ -743,6 +743,91 @@
     nextTask();
   });
 
+  /* ---------- Помощь ---------- */
+  var helpBtn = $('helpOpen');
+  var helpOverlay = $('helpOverlay');
+  var helpBackground = [
+    document.querySelector('header'),
+    document.querySelector('.tabs'),
+    document.querySelector('.card')
+  ];
+  var helpTimer = null;
+  var helpEndHandler = null;
+
+  function setHelpBackgroundInert(on) {
+    helpBackground.forEach(function (el) {
+      if (!el) return;
+
+      if (on) {
+        el.setAttribute('inert', '');
+      } else {
+        el.removeAttribute('inert');
+      }
+    });
+  }
+
+  function resetHelp() {
+    if (helpTimer !== null) {
+      clearTimeout(helpTimer);
+      helpTimer = null;
+    }
+
+    if (helpEndHandler) {
+      helpOverlay.removeEventListener('animationend', helpEndHandler);
+      helpEndHandler = null;
+    }
+
+    helpOverlay.classList.remove('open', 'closing');
+    document.body.classList.remove('help-open');
+    helpBtn.setAttribute('aria-expanded', 'false');
+    setHelpBackgroundInert(false);
+  }
+
+  function openHelp() {
+    if (helpOverlay.classList.contains('open') &&
+        !helpOverlay.classList.contains('closing')) return;
+
+    resetHelp();
+    helpOverlay.classList.add('open');
+    document.body.classList.add('help-open');
+    helpBtn.setAttribute('aria-expanded', 'true');
+    setHelpBackgroundInert(true);
+    helpOverlay.focus();
+  }
+
+  function closeHelp() {
+    if (!helpOverlay.classList.contains('open') ||
+        helpOverlay.classList.contains('closing')) return;
+
+    helpOverlay.classList.add('closing');
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      resetHelp();
+      helpBtn.focus();
+      return;
+    }
+
+    // слой прячем после анимации; таймер страхует, если animationend не придёт
+    var finish = function () {
+      resetHelp();
+      helpBtn.focus();
+    };
+
+    helpEndHandler = function (e) {
+      if (e.target === helpOverlay && e.animationName === 'help-out') finish();
+    };
+
+    helpOverlay.addEventListener('animationend', helpEndHandler);
+    helpTimer = setTimeout(finish, 260);
+  }
+
+  helpBtn.addEventListener('click', openHelp);
+  helpOverlay.addEventListener('click', closeHelp);
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && helpOverlay.classList.contains('open')) closeHelp();
+  });
+
   syncLevelUi();
   nextTask();
 })();

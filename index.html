@@ -13,6 +13,7 @@
   <div class="hgroup">
     <div class="pill">Баллы: <span id="score">0</span></div>
     <button class="pill btnreset" id="reset" title="Сбросить счёт">Сброс</button>
+    <button class="pill btnhelp" id="helpOpen" type="button" aria-haspopup="dialog" aria-controls="helpOverlay" aria-expanded="false">Помощь</button>
   </div>
 </header>
 
@@ -82,6 +83,10 @@
 
   <div class="feedback" id="feedback"></div>
   <button class="btn next" id="next" type="button" hidden>Дальше</button>
+</div>
+
+<div class="help-overlay" id="helpOverlay" role="dialog" aria-modal="true" aria-label="Памятка: как читать время по часам" tabindex="-1">
+  <img src="clock_help.png" alt="Памятка: как читать время по часам со стрелками" draggable="false">
 </div>
 
 <script src="app.js"></script>
