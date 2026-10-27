@@ -28,6 +28,7 @@
       <circle class="face" cx="100" cy="100" r="92"/>
       <g id="ticks"></g>
       <g id="numbers"></g>
+      <g id="minuteLabels"></g>
       <line id="hourHand" class="hand hour" x1="100" y1="100" x2="100" y2="62"/>
       <line id="minuteHand" class="hand minute" x1="100" y1="100" x2="100" y2="44"/>
       <circle class="pin" cx="100" cy="100" r="6.5"/>
@@ -36,7 +37,16 @@
   </div>
 
   <div class="panel show" id="panel1">
+    <div class="levels" id="levels">
+      <button class="lvl active" data-level="1" aria-pressed="true">Легко</button>
+      <button class="lvl" data-level="2" aria-pressed="false">Средне</button>
+      <button class="lvl" data-level="3" aria-pressed="false">Сложно</button>
+    </div>
     <p class="q">Который час показывают стрелки?</p>
+    <div class="meta">
+      <span id="mistakes"></span>
+      <span id="cooldown"></span>
+    </div>
     <div class="options" id="options"></div>
   </div>
 

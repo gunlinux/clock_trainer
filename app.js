@@ -38,6 +38,22 @@
     numsG.appendChild(t);
   }
 
+  /* --- Подписи минут 5..60, видны только на лёгком и среднем уровнях --- */
+  var minsG = $('minuteLabels');
+
+  for (var mn = 1; mn <= 12; mn++) {
+    var tm = mn * 30 * Math.PI / 180;
+    var mt = document.createElementNS(NS, 'text');
+    mt.setAttribute('x', (100 + 58 * Math.sin(tm)).toFixed(2));
+    mt.setAttribute('y', (100 - 58 * Math.cos(tm)).toFixed(2));
+    mt.setAttribute('class', 'min');
+    mt.setAttribute('text-anchor', 'middle');
+    mt.setAttribute('dominant-baseline', 'central');
+    mt.textContent = mn * 5;
+
+    minsG.appendChild(mt);
+  }
+
   var hourHand = $('hourHand');
   var minuteHand = $('minuteHand');
 
@@ -67,19 +83,32 @@
     hourHand.style.transform = 'rotate(' + hAngle + 'deg)';
   }
 
-  var state = { mode: 1, answer: 0, score: 0, locked: false };
+  /* --- Уровни сложности режима «Выбери время» --- */
+  var LEVELS = {
+    1: { step: 5, minutes: true, penaltyEvery: 0 },
+    2: { step: 5, minutes: false, penaltyEvery: 3 },
+    3: { step: 1, minutes: false, penaltyEvery: 2 }
+  };
+
+  var COOLDOWN_MS = 5000;
+
+  var state = { mode: 1, level: 1, answer: 0, score: 0, mistakes: 0, locked: false };
   var dH = 0;
   var dM = 0;
   var timer = null;
+  var cooldownUntil = 0;
+  var cooldownTimer = null;
 
   function schedule(fn, ms) {
     clearTimeout(timer);
     timer = setTimeout(fn, ms);
   }
 
-  function randomTime() {
+  function randomTime(step) {
+    step = step || 5;
+
     var h = Math.floor(Math.random() * 24);
-    var m = Math.floor(Math.random() * 12) * 5;
+    var m = Math.floor(Math.random() * (60 / step)) * step;
     return h * 60 + m;
   }
 
@@ -133,7 +162,8 @@
     return ((t % 720) + 720) % 720;
   }
 
-  function buildOptions(ans) {
+  function buildOptions(ans, level) {
+    var cfg = LEVELS[level];
     var ah = Math.floor(ans / 60);
     var am = ans % 60;
     var ansKey = visualKey(ans);
@@ -141,33 +171,57 @@
     seen[ansKey] = true;
 
     var pool = [];
+    var sameHour = [];
 
-    function push(value) {
+    function push(list, value) {
       value = ((value % 1440) + 1440) % 1440;
       var vk = visualKey(value);
 
       if (!seen[vk]) {
         seen[vk] = true;
-        pool.push(value);
+        list.push(value);
       }
     }
 
-    push(ah * 60 + (am + 5) % 60);
-    push(ah * 60 + (am + 30) % 60);
-    push(ah * 60 + (am + 55) % 60);
-    push(((ah + 1) % 24) * 60 + am);
-    push(((ah + 2) % 24) * 60 + am);
-    push(((ah + 3) % 24) * 60 + am);
-    push(((ah + 6) % 24) * 60 + am);
-    push(((ah + 9) % 24) * 60 + am);
+    if (level === 3) {
+      // минимум три варианта в одном 24-часовом часе: ответ и два добранных
+      var guard = 0;
 
-    while (pool.length < 12) push(randomTime());
+      while (sameHour.length < 2 && guard++ < 500) {
+        push(sameHour, ah * 60 + Math.floor(Math.random() * 60));
+      }
+
+      if (sameHour.length < 2) {
+        push(sameHour, ah * 60 + (am + 5) % 60);
+        push(sameHour, ah * 60 + (am + 10) % 60);
+      }
+
+      push(pool, ((ah + 1) % 24) * 60 + am);
+      push(pool, ((ah + 2) % 24) * 60 + am);
+      push(pool, ((ah + 6) % 24) * 60 + am);
+      push(pool, ((ah + 9) % 24) * 60 + am);
+
+      while (pool.length < 4) push(pool, randomTime(1));
+
+      return shuffle([ans, sameHour[0], sameHour[1], pool[0]]);
+    }
+
+    push(pool, ah * 60 + (am + 5) % 60);
+    push(pool, ah * 60 + (am + 30) % 60);
+    push(pool, ah * 60 + (am + 55) % 60);
+    push(pool, ((ah + 1) % 24) * 60 + am);
+    push(pool, ((ah + 2) % 24) * 60 + am);
+    push(pool, ((ah + 3) % 24) * 60 + am);
+    push(pool, ((ah + 6) % 24) * 60 + am);
+    push(pool, ((ah + 9) % 24) * 60 + am);
+
+    while (pool.length < 12) push(pool, randomTime(cfg.step));
 
     shuffle(pool);
     return shuffle([ans, pool[0], pool[1], pool[2]]);
   }
 
-  function renderOptions(opts) {
+  function renderOptions(opts, level) {
     var box = $('options');
     box.innerHTML = '';
 
@@ -175,26 +229,116 @@
       var p = pairLabel(value);
       var b = document.createElement('button');
 
-      b.className = 'opt';
+      b.className = level === 3 ? 'opt solo' : 'opt';
       b.dataset.t = value;
-      b.innerHTML =
-        '<span class="t12">' + p.h12 + '</span>' +
-        '<span class="t24">' + p.h24 + '</span>';
+      b.innerHTML = level === 3
+        ? '<span class="t24">' + p.h24 + '</span>'
+        : '<span class="t12">' + p.h12 + '</span>' +
+          '<span class="t24">' + p.h24 + '</span>';
 
       b.addEventListener('click', function () { pickOption(b, value); });
       box.appendChild(b);
     });
+
+    syncCooldown();
+  }
+
+  /* --- Пауза между ответами --- */
+  function coolingDown() {
+    return Date.now() < cooldownUntil;
+  }
+
+  function syncCooldown() {
+    var left = cooldownUntil - Date.now();
+    var label = $('cooldown');
+    var opts = document.querySelectorAll('#options .opt');
+
+    if (left <= 0) {
+      label.textContent = '';
+      Array.prototype.forEach.call(opts, function (b) { b.disabled = false; });
+
+      if (cooldownTimer) {
+        clearInterval(cooldownTimer);
+        cooldownTimer = null;
+      }
+
+      return;
+    }
+
+    label.textContent = 'Можно отвечать через ' + Math.ceil(left / 1000) + ' с';
+    Array.prototype.forEach.call(opts, function (b) { b.disabled = true; });
+
+    if (!cooldownTimer) cooldownTimer = setInterval(syncCooldown, 250);
+  }
+
+  function startCooldown() {
+    cooldownUntil = Date.now() + COOLDOWN_MS;
+    syncCooldown();
+  }
+
+  function stopCooldown() {
+    cooldownUntil = 0;
+
+    if (cooldownTimer) {
+      clearInterval(cooldownTimer);
+      cooldownTimer = null;
+    }
+
+    syncCooldown();
+  }
+
+  /* --- Оформление, зависящее от уровня --- */
+  function syncLevelUi() {
+    var cfg = LEVELS[state.level];
+    var clock = $('clock');
+
+    if (state.mode === 1 && cfg.minutes) {
+      clock.classList.add('minutes-on');
+    } else {
+      clock.classList.remove('minutes-on');
+    }
+
+    var lvls = document.querySelectorAll('.lvl');
+
+    Array.prototype.forEach.call(lvls, function (b) {
+      var on = +b.dataset.level === state.level;
+
+      if (on) {
+        b.classList.add('active');
+      } else {
+        b.classList.remove('active');
+      }
+
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+
+    if (cfg.penaltyEvery > 0) {
+      $('mistakes').textContent = 'ошибки: ' + state.mistakes + ' из ' + cfg.penaltyEvery;
+    } else {
+      $('mistakes').textContent = '';
+    }
+  }
+
+  function setLevel(level) {
+    state.level = level;
+    state.mistakes = 0;
+    syncLevelUi();
+    nextTask();
   }
 
   function pickOption(btn, value) {
-    if (state.locked) return;
+    if (state.locked || coolingDown()) return;
     state.locked = true;
+    startCooldown();
 
     var p = pairLabel(state.answer);
+    var cfg = LEVELS[state.level];
 
     if (value === state.answer) {
       state.score++;
+      if (state.mistakes > 0) state.mistakes--;
       updateScore();
+      syncLevelUi();
       btn.classList.add('ok');
       showFeedback('Верно! ' + p.h12 + ' = ' + p.h24a + ' или ' + p.h24b, 'good');
       schedule(nextTask, 1100);
@@ -206,7 +350,29 @@
         if (+kids[i].dataset.t === state.answer) kids[i].classList.add('ok');
       }
 
-      showFeedback('Правильный ответ: ' + p.h12 + ' = ' + p.h24a + ' или ' + p.h24b, 'bad');
+      var penalty = false;
+
+      if (cfg.penaltyEvery > 0) {
+        state.mistakes++;
+
+        if (state.mistakes >= cfg.penaltyEvery) {
+          state.mistakes = 0;
+
+          if (state.score > 0) {
+            state.score--;
+            updateScore();
+            penalty = true;
+          }
+        }
+
+        syncLevelUi();
+      }
+
+      showFeedback(
+        'Правильный ответ: ' + p.h12 + ' = ' + p.h24a + ' или ' + p.h24b +
+        (penalty ? ' (−1 балл)' : ''),
+        'bad'
+      );
       schedule(nextTask, 2300);
     }
   }
@@ -276,20 +442,20 @@
     hideFeedback();
 
     if (state.mode === 1) {
-      state.answer = randomTime();
+      state.answer = randomTime(LEVELS[state.level].step);
       setClock(state.answer);
-      renderOptions(buildOptions(state.answer));
+      renderOptions(buildOptions(state.answer, state.level), state.level);
     } else if (state.mode === 2) {
-      state.answer = randomTime();
+      state.answer = randomTime(5);
       setClock(state.answer);
       $('hh').value = '';
       $('mm').value = '';
       if (window.matchMedia('(min-width: 700px)').matches) $('hh').focus();
     } else {
-      state.answer = randomTime();
+      state.answer = randomTime(5);
       $('target3').textContent = pairLabel(state.answer).h24;
 
-      var start = randomTime();
+      var start = randomTime(5);
       var guard = 0;
       while (visualKey(start) === visualKey(state.answer) && guard++ < 50) {
         start = randomTime();
@@ -314,6 +480,7 @@
       Array.prototype.forEach.call(panels, function (p) { p.classList.remove('show'); });
       $('panel' + state.mode).classList.add('show');
 
+      syncLevelUi();
       nextTask();
     });
   });
@@ -361,11 +528,26 @@
     });
   });
 
+  /* ---------- Уровни сложности ---------- */
+  var lvlBtns = document.querySelectorAll('.lvl');
+
+  Array.prototype.forEach.call(lvlBtns, function (b) {
+    b.addEventListener('click', function () {
+      var lv = +b.dataset.level;
+      if (lv === state.level) return;
+      setLevel(lv);
+    });
+  });
+
   $('reset').addEventListener('click', function () {
     state.score = 0;
+    state.mistakes = 0;
+    stopCooldown();
     updateScore();
+    syncLevelUi();
     nextTask();
   });
 
+  syncLevelUi();
   nextTask();
 })();
