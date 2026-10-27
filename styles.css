@@ -488,6 +488,12 @@ svg#clock{
   transform:none;
 }
 
+#panel1.answered .options,
+#panel2.answered .time-input,
+#panel2.answered #check2{
+  display:none;
+}
+
 .time-input{
   display:flex;
   align-items:center;
@@ -557,6 +563,18 @@ svg#clock{
   background:linear-gradient(135deg,#6366f1,#8b5cf6);
   color:#fff;
   box-shadow:0 8px 20px rgba(99,102,241,.35);
+  animation:next-in .18s ease-out;
+}
+
+@keyframes next-in{
+  from{
+    opacity:0;
+    transform:translateY(-4px);
+  }
+  to{
+    opacity:1;
+    transform:none;
+  }
 }
 
 .btn.next:active{
@@ -679,5 +697,11 @@ svg#clock{
 
   #clock .min{
     font-size:6.5px;
+  }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .btn.next{
+    animation:none;
   }
 }

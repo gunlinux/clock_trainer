@@ -448,6 +448,7 @@
 
     showNext();
     setAnswerControls(false);
+    $('panel1').classList.add('answered');
   }
 
   /* ---------- РЕЖИМ 2 ---------- */
@@ -493,6 +494,7 @@
 
     showNext();
     setAnswerControls(false);
+    $('panel2').classList.add('answered');
   }
 
   /* ---------- РЕЖИМ 3 ---------- */
@@ -644,6 +646,8 @@
     state.locked = false;
     hideFeedback();
     hideNext();
+    $('panel1').classList.remove('answered');
+    $('panel2').classList.remove('answered');
     setAnswerControls(true);
 
     if (state.mode === 1) {
