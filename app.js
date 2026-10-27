@@ -387,6 +387,12 @@
       panel3.classList.remove('readout-off');
     }
 
+    var minuteMinus = document.querySelector('[data-act="m-"]');
+    var minutePlus = document.querySelector('[data-act="m+"]');
+
+    if (minuteMinus) minuteMinus.textContent = '- ' + cfg.step + ' мин';
+    if (minutePlus) minutePlus.textContent = '+ ' + cfg.step + ' мин';
+
     var lvls = document.querySelectorAll('.lvl');
 
     Array.prototype.forEach.call(lvls, function (b) {
@@ -549,7 +555,8 @@
   function applyDrag(angle) {
     if (dragHand === 'minute') {
       var total = dragTurn / 6;
-      var snapped = Math.round(total / 5) * 5;
+      var step = LEVELS[state.level].step;
+      var snapped = Math.round(total / step) * step;
       dM = ((snapped % 60) + 60) % 60;
       dH = ((dragStartHour + Math.floor(snapped / 60)) % 24 + 24) % 24;
     } else {
@@ -650,7 +657,7 @@
       $('mm').value = '';
       if (window.matchMedia('(min-width: 700px)').matches) $('hh').focus();
     } else {
-      state.answer = randomTime(5);
+      state.answer = randomTime(LEVELS[state.level].step);
       $('target3').textContent = dualLabel(state.answer);
 
       var start = randomTime(5);
@@ -715,14 +722,15 @@
       if (state.locked) return;
 
       var a = b.dataset.act;
+      var step = LEVELS[state.level].step;
 
       // работаем с общим количеством минут — так перенос в часы происходит сам
       var total = dH * 60 + dM;
 
       if (a === 'h+') total += 60;
       if (a === 'h-') total -= 60;
-      if (a === 'm+') total += 5;
-      if (a === 'm-') total -= 5;
+      if (a === 'm+') total += step;
+      if (a === 'm-') total -= step;
 
       // нормализуем в диапазон 0..1439
       total = ((total % 1440) + 1440) % 1440;
