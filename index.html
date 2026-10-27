@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Учимся читать время</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+  <h1>Учимся читать время</h1>
+  <div class="hgroup">
+    <div class="pill">Баллы: <span id="score">0</span></div>
+    <button class="pill btnreset" id="reset" title="Сбросить счёт">Сброс</button>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-mode="1">Выбери время</button>
+  <button class="tab" data-mode="2">Запиши время</button>
+  <button class="tab" data-mode="3">Поставь время</button>
+</div>
+
+<div class="card">
+  <div class="clock-wrap">
+    <svg id="clock" viewBox="0 0 200 200" aria-hidden="true">
+      <circle class="face" cx="100" cy="100" r="92"/>
+      <g id="ticks"></g>
+      <g id="numbers"></g>
+      <line id="hourHand" class="hand hour" x1="100" y1="100" x2="100" y2="62"/>
+      <line id="minuteHand" class="hand minute" x1="100" y1="100" x2="100" y2="44"/>
+      <circle class="pin" cx="100" cy="100" r="6.5"/>
+      <circle class="pin-dot" cx="100" cy="100" r="2.6"/>
+    </svg>
+  </div>
+
+  <div class="panel show" id="panel1">
+    <p class="q">Который час показывают стрелки?</p>
+    <div class="options" id="options"></div>
+  </div>
+
+  <div class="panel" id="panel2">
+    <p class="q">Запиши время цифрами (24 часа)</p>
+    <div class="time-input">
+      <input id="hh" class="tin" type="text" inputmode="numeric" maxlength="2" placeholder="ЧЧ" autocomplete="off">
+      <span class="sep">:</span>
+      <input id="mm" class="tin" type="text" inputmode="numeric" maxlength="2" placeholder="ММ" autocomplete="off">
+    </div>
+    <button class="btn primary" id="check2">Проверить</button>
+  </div>
+
+  <div class="panel" id="panel3">
+    <p class="q">Поставь на цифровых часах <b class="target" id="target3">--:--</b></p>
+    <div class="digital">
+      <span id="digH">00</span><span class="colon">:</span><span id="digM">00</span>
+    </div>
+    <div class="dbtns">
+      <button class="btn" data-act="h-">- 1 час</button>
+      <button class="btn" data-act="h+">+ 1 час</button>
+      <button class="btn" data-act="m-">- 5 мин</button>
+      <button class="btn" data-act="m+">+ 5 мин</button>
+    </div>
+  </div>
+
+  <div class="feedback" id="feedback"></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
