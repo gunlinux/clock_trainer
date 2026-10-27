@@ -491,18 +491,17 @@
 
   /* ---------- РЕЖИМ 3 ---------- */
   function renderDigital() {
-    $('digH').textContent = pad(dH);
-    $('digM').textContent = pad(dM);
-
     var p = pairLabel(dH * 60 + dM);
     var a = p.h24a.split(':');
     var b = p.h24b.split(':');
+    $('digH').textContent = a[0];
+    $('digM').textContent = a[1];
     $('digH2').textContent = b[0];
     $('digM2').textContent = b[1];
 
     setClock(dH * 60 + dM);
 
-    if (!state.locked && dH * 60 + dM === state.answer) {
+    if (!state.locked && visualKey(dH * 60 + dM) === visualKey(state.answer)) {
       state.locked = true;
       state.score++;
       updateScore();
