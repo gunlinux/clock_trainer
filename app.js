@@ -500,6 +500,9 @@
 
   Array.prototype.forEach.call(tabs, function (tab) {
     tab.addEventListener('click', function () {
+      // повторный клик по активной вкладке не должен выдавать новое задание
+      if (+tab.dataset.mode === state.mode) return;
+
       Array.prototype.forEach.call(tabs, function (t) { t.classList.remove('active'); });
       tab.classList.add('active');
       state.mode = +tab.dataset.mode;

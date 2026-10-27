@@ -96,6 +96,7 @@ Mode switching is generic (`data-mode`, `#panelN`, `state.mode`), so no extra wi
 - `#mistakes` and `#mistakes2` are written only by `syncLevelUi()`; keep that single writer so the two counters cannot drift.
 - In mode 2 the pause disables only `#check2`; `#hh` and `#mm` stay editable, and `checkTyped()` guards both the button and `Enter` via `state.locked || coolingDown()`.
 - Option labels on levels 1–2 must use `pairLabel().h24alt`, never `.h24`: for hours 1–12 the plain 24-hour reading repeats the 12-hour line.
+- Re-clicking the already-active mode tab returns early in the tab handler: it must not deal a new task, clear the feedback message, reset the score or mistakes, or bypass the answer cooldown. Only a click on a different tab calls `nextTask()`; switching away and back still deals a new task.
 - `#hh` autofocus in mode 2 is gated on `matchMedia('(min-width: 700px)')` to avoid popping the mobile keyboard.
 - The digital colon blinks via a CSS `steps(1)` animation — parent-visibility changes restart it, which is harmless but can look like a flicker on mode entry.
 - `.digital` uses `width:max-content` plus `margin:0 auto`; adding a flex child there can break the centering that the 380px breakpoint relies on.
