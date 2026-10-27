@@ -201,10 +201,6 @@ h1{
   }
 }
 
-#cooldown,#cooldown2{
-  color:#6366f1;
-}
-
 .card{
   width:100%;
   max-width:520px;
@@ -476,6 +472,19 @@ svg#clock{
 }
 
 .btn.primary:active{
+  transform:translateY(1px);
+  box-shadow:0 4px 12px rgba(99,102,241,.35);
+}
+
+.btn.next{
+  width:100%;
+  margin-top:10px;
+  background:linear-gradient(135deg,#6366f1,#8b5cf6);
+  color:#fff;
+  box-shadow:0 8px 20px rgba(99,102,241,.35);
+}
+
+.btn.next:active{
   transform:translateY(1px);
   box-shadow:0 4px 12px rgba(99,102,241,.35);
 }

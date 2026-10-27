@@ -91,8 +91,6 @@
     3: { step: 1, minutes: false, penaltyEvery: 2 }
   };
 
-  var COOLDOWN_MS = 3000;
-
   var state = { mode: 1, level: 1, answer: 0, score: 0, mistakes: 0, locked: false, heartsDown: false };
   var dH = 0;
   var dM = 0;
@@ -101,14 +99,6 @@
   var dragStartHour = 0;
   var dragTurn = 0;
   var dragPrev = 0;
-  var timer = null;
-  var cooldownUntil = 0;
-  var cooldownTimer = null;
-
-  function schedule(fn, ms) {
-    clearTimeout(timer);
-    timer = setTimeout(fn, ms);
-  }
 
   function randomTime(step) {
     step = step || 5;
@@ -175,6 +165,14 @@
     var f = $('feedback');
     f.textContent = '';
     f.className = 'feedback';
+  }
+
+  function showNext() {
+    $('next').hidden = false;
+  }
+
+  function hideNext() {
+    $('next').hidden = true;
   }
 
   /* --- Два формата для одного положения стрелок --- */
@@ -282,57 +280,16 @@
       b.addEventListener('click', function () { pickOption(b, value); });
       box.appendChild(b);
     });
-
-    syncCooldown();
   }
 
-  /* --- Пауза между ответами --- */
-  function coolingDown() {
-    return Date.now() < cooldownUntil;
-  }
-
-  function syncCooldown() {
-    var left = cooldownUntil - Date.now();
+  /* --- Элементы ответа до «Дальше» --- */
+  function setAnswerControls(enabled) {
     var opts = document.querySelectorAll('#options .opt');
-    var check = $('check2');
+    Array.prototype.forEach.call(opts, function (b) { b.disabled = !enabled; });
+    $('check2').disabled = !enabled;
 
-    if (left <= 0) {
-      $('cooldown').textContent = '';
-      $('cooldown2').textContent = '';
-      Array.prototype.forEach.call(opts, function (b) { b.disabled = false; });
-      check.disabled = false;
-
-      if (cooldownTimer) {
-        clearInterval(cooldownTimer);
-        cooldownTimer = null;
-      }
-
-      return;
-    }
-
-    var text = 'Можно отвечать через ' + Math.ceil(left / 1000) + ' с';
-    $('cooldown').textContent = text;
-    $('cooldown2').textContent = text;
-    Array.prototype.forEach.call(opts, function (b) { b.disabled = true; });
-    check.disabled = true;
-
-    if (!cooldownTimer) cooldownTimer = setInterval(syncCooldown, 250);
-  }
-
-  function startCooldown() {
-    cooldownUntil = Date.now() + COOLDOWN_MS;
-    syncCooldown();
-  }
-
-  function stopCooldown() {
-    cooldownUntil = 0;
-
-    if (cooldownTimer) {
-      clearInterval(cooldownTimer);
-      cooldownTimer = null;
-    }
-
-    syncCooldown();
+    var actBtns = document.querySelectorAll('[data-act]');
+    Array.prototype.forEach.call(actBtns, function (b) { b.disabled = !enabled; });
   }
 
   /* --- Сердца-жизни на уровнях 2-3 --- */
@@ -444,9 +401,8 @@
   }
 
   function pickOption(btn, value) {
-    if (state.locked || coolingDown()) return;
+    if (state.locked) return;
     state.locked = true;
-    startCooldown();
 
     var p = pairLabel(state.answer);
 
@@ -454,7 +410,6 @@
       awardPoint();
       btn.classList.add('ok');
       showFeedback('Верно! ' + p.h12 + ' = ' + p.h24a + ' или ' + p.h24b, 'good');
-      schedule(nextTask, 1100);
     } else {
       btn.classList.add('bad');
 
@@ -470,13 +425,15 @@
         (penalty ? ' (−1 балл)' : ''),
         'bad'
       );
-      schedule(nextTask, 2300);
     }
+
+    showNext();
+    setAnswerControls(false);
   }
 
   /* ---------- РЕЖИМ 2 ---------- */
   function checkTyped() {
-    if (state.locked || coolingDown()) return;
+    if (state.locked) return;
 
     var hv = $('hh').value.trim();
     var mv = $('mm').value.trim();
@@ -495,7 +452,6 @@
     }
 
     state.locked = true;
-    startCooldown();
 
     // принимаем оба 24-часовых варианта, т.к. на 12-часовом циферблате они одинаковы
     var typed = h * 60 + m;
@@ -506,7 +462,6 @@
       awardPoint();
       var p = pairLabel(state.answer);
       showFeedback('Правильно! ' + p.h12 + ' = ' + p.h24a + ' или ' + p.h24b, 'good');
-      schedule(nextTask, 1200);
     } else {
       var penalty = registerMistake();
       var p2 = pairLabel(state.answer);
@@ -515,8 +470,10 @@
         (penalty ? ' (−1 балл)' : ''),
         'bad'
       );
-      schedule(nextTask, 2400);
     }
+
+    showNext();
+    setAnswerControls(false);
   }
 
   /* ---------- РЕЖИМ 3 ---------- */
@@ -533,7 +490,8 @@
 
       var p = pairLabel(state.answer);
       showFeedback('Отлично! ' + p.h12 + ' = ' + p.h24a + ' или ' + p.h24b, 'good');
-      schedule(nextTask, 1600);
+      showNext();
+      setAnswerControls(false);
     }
   }
 
@@ -651,7 +609,6 @@
 
   /* ---------- Новое задание ---------- */
   function nextTask() {
-    clearTimeout(timer);
     endDrag();
 
     if (state.heartsDown) {
@@ -662,6 +619,8 @@
 
     state.locked = false;
     hideFeedback();
+    hideNext();
+    setAnswerControls(true);
 
     if (state.mode === 1) {
       state.answer = randomTime(LEVELS[state.level].step);
@@ -712,6 +671,11 @@
 
   /* ---------- Режим 2: ввод ---------- */
   $('check2').addEventListener('click', checkTyped);
+
+  $('next').addEventListener('click', function () {
+    if (!state.locked) return;
+    nextTask();
+  });
 
   ['hh', 'mm'].forEach(function (id) {
     var inp = $(id);
@@ -774,7 +738,6 @@
     state.score = 0;
     state.mistakes = 0;
     state.heartsDown = false;
-    stopCooldown();
     updateScore();
     syncLevelUi();
     nextTask();
