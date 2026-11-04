@@ -92,6 +92,7 @@
   };
 
   var state = { mode: 1, level: 1, answer: 0, score: 0, mistakes: 0, locked: false, heartsDown: false };
+  var taskStartedAt = 0;
   var dH = 0;
   var dM = 0;
   var dragHand = null;
@@ -173,6 +174,13 @@
 
   function hideNext() {
     $('next').hidden = true;
+  }
+
+  function recordAnswer(mode, level, correct, given, expected) {
+    if (!window.ClockAccount) return;
+
+    var elapsed = taskStartedAt ? Math.max(0, Date.now() - taskStartedAt) : null;
+    window.ClockAccount.record('clock', mode, level, correct, given, expected, elapsed);
   }
 
   /* --- Два формата для одного положения стрелок --- */
@@ -424,8 +432,9 @@
     state.locked = true;
 
     var p = pairLabel(state.answer);
+    var correct = value === state.answer;
 
-    if (value === state.answer) {
+    if (correct) {
       awardPoint();
       btn.classList.add('ok');
       showFeedback('Верно! ' + p.h12 + ' = ' + p.h24a + ' или ' + p.h24b, 'good');
@@ -449,6 +458,8 @@
     showNext();
     setAnswerControls(false);
     $('panel1').classList.add('answered');
+
+    recordAnswer(1, state.level, correct, dualLabel(value), dualLabel(state.answer));
   }
 
   /* ---------- РЕЖИМ 2 ---------- */
@@ -495,6 +506,8 @@
     showNext();
     setAnswerControls(false);
     $('panel2').classList.add('answered');
+
+    recordAnswer(2, state.level, ok, pad(h) + ':' + pad(m), dualLabel(state.answer));
   }
 
   /* ---------- РЕЖИМ 3 ---------- */
@@ -517,6 +530,8 @@
       showFeedback('Отлично! ' + p.h12 + ' = ' + p.h24a + ' или ' + p.h24b, 'good');
       showNext();
       setAnswerControls(false);
+
+      recordAnswer(3, state.level, true, dualLabel(dH * 60 + dM), dualLabel(state.answer));
     }
   }
 
@@ -674,6 +689,8 @@
       dM = start % 60;
       renderDigital();
     }
+
+    taskStartedAt = Date.now();
   }
 
   /* ---------- Вкладки ---------- */

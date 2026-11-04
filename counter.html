@@ -109,6 +109,80 @@
       margin:0 0 12px;
     }
 
+    .lvl{
+      display:flex;
+      justify-content:center;
+      gap:8px;
+      margin:0 0 14px;
+    }
+
+    .lvl button{
+      flex:1;
+      max-width:150px;
+      padding:9px 6px;
+      border-radius:12px;
+      border:2px solid #e2e8f0;
+      background:#f8fafc;
+      color:#475569;
+      font:inherit;
+      font-size:14px;
+      font-weight:800;
+      cursor:pointer;
+      transition:.15s;
+    }
+
+    .lvl button.active{
+      background:linear-gradient(135deg,#6366f1,#8b5cf6);
+      border-color:transparent;
+      color:#fff;
+      box-shadow:0 6px 14px rgba(99,102,241,.32);
+    }
+
+    .lvl button:active{
+      transform:scale(.97);
+    }
+
+    .hearts{
+      display:inline-flex;
+      align-items:center;
+      gap:3px;
+      line-height:1;
+      vertical-align:-.05em;
+      margin-left:4px;
+    }
+
+    .heart{
+      font-size:15px;
+      color:#e11d48;
+      transition:color .28s ease, opacity .28s ease, transform .32s cubic-bezier(.34,1.4,.64,1);
+    }
+
+    .heart.lost{
+      color:#cbd5e1;
+      opacity:.5;
+      transform:scale(.78);
+    }
+
+    .heart.burn{
+      animation:heart-burn .45s ease-out;
+    }
+
+    .heart.return{
+      animation:heart-return .5s cubic-bezier(.34,1.4,.64,1);
+    }
+
+    @keyframes heart-burn{
+      0%{transform:scale(1);color:#e11d48;opacity:1;}
+      35%{transform:scale(1.35) rotate(-10deg);color:#fb7185;opacity:1;}
+      100%{transform:scale(.78);color:#cbd5e1;opacity:.5;}
+    }
+
+    @keyframes heart-return{
+      0%{transform:scale(.78);color:#cbd5e1;opacity:.5;}
+      55%{transform:scale(1.3);color:#fb7185;opacity:1;}
+      100%{transform:scale(1);color:#e11d48;opacity:1;}
+    }
+
     .example{
       display:flex;
       align-items:baseline;
@@ -190,6 +264,18 @@
         border-color:#a5b4fc;
         transform:translateY(-2px);
         box-shadow:0 8px 18px rgba(99,102,241,.18);
+      }
+
+      .lvl button:not(.active):hover{
+        background:#eef2ff;
+        border-color:#a5b4fc;
+        color:#4338ca;
+      }
+
+      .answer-row .btn.check:not(:disabled):hover{
+        background:linear-gradient(135deg,#4f46e5,#7c3aed);
+        box-shadow:0 10px 24px rgba(99,102,241,.42);
+        transform:translateY(-1px);
       }
 
       .btn.next:hover{
@@ -308,6 +394,60 @@
       to{opacity:1;transform:none;}
     }
 
+    .answer-row{
+      display:flex;
+      gap:10px;
+      align-items:stretch;
+    }
+
+    .answer-row[hidden],
+    .options[hidden]{
+      display:none;
+    }
+
+    #answerInput{
+      flex:1;
+      min-width:0;
+      min-height:66px;
+      padding:10px 12px;
+      border:2px solid #e2e8f0;
+      border-radius:16px;
+      background:#f8fafc;
+      color:#1e293b;
+      font:inherit;
+      font-size:27px;
+      font-weight:800;
+      font-variant-numeric:tabular-nums;
+      text-align:center;
+      outline:none;
+      transition:.15s;
+    }
+
+    #answerInput::placeholder{
+      color:#94a3b8;
+      font-weight:700;
+    }
+
+    #answerInput:focus{
+      border-color:#a5b4fc;
+      background:#eef2ff;
+      box-shadow:0 0 0 3px rgba(99,102,241,.18);
+    }
+
+    .answer-row .btn.check{
+      flex:0 0 auto;
+      min-height:66px;
+      padding:0 20px;
+      background:linear-gradient(135deg,#6366f1,#8b5cf6);
+      color:#fff;
+      box-shadow:0 8px 20px rgba(99,102,241,.35);
+    }
+
+    .answer-row .btn.check:active{
+      transform:translateY(1px);
+      box-shadow:0 4px 12px rgba(99,102,241,.35);
+    }
+
     @media (max-width:440px){
       header{
         flex-direction:column;
@@ -330,14 +470,34 @@
         font-size:24px;
         min-height:60px;
       }
+
+      .lvl button{
+        font-size:13px;
+        padding:8px 4px;
+      }
+
+      #answerInput,
+      .answer-row .btn.check{
+        min-height:60px;
+        font-size:24px;
+      }
+
+      .answer-row .btn.check{
+        padding:0 14px;
+      }
     }
 
     @media (prefers-reduced-motion:reduce){
-      #score.bump,.example.pop,.opt.ok,.opt.bad,.feedback.good,.feedback.bad,.btn.next{
+      #score.bump,.example.pop,.opt.ok,.opt.bad,.feedback.good,.feedback.bad,.btn.next,.heart.burn,.heart.return{
         animation:none;
+      }
+
+      .heart{
+        transition:none;
       }
     }
   </style>
+  <link rel="stylesheet" href="account.css">
 </head>
 <body>
 
@@ -350,11 +510,20 @@
 </header>
 
 <main class="card" id="card">
-  <p class="q">Сколько получится?</p>
+  <p class="q">Сколько получится? <span class="hearts" id="hearts"></span></p>
+  <div class="lvl" id="levels" role="group" aria-label="Уровень сложности">
+    <button type="button" data-level="1" class="active" aria-pressed="true">Легко</button>
+    <button type="button" data-level="2" aria-pressed="false">Средне</button>
+    <button type="button" data-level="3" aria-pressed="false">Сложно</button>
+  </div>
   <div class="example" id="example" aria-live="polite">
     <span id="a">1</span><span class="op" id="op">+</span><span id="b">7</span><span class="eq">=</span><span class="unknown">?</span>
   </div>
   <div class="options" id="options"></div>
+  <div class="answer-row" id="answerRow" hidden>
+    <input id="answerInput" type="text" inputmode="numeric" autocomplete="off" maxlength="2" placeholder="?" aria-label="Введи ответ">
+    <button class="btn check" id="check" type="button">Проверить</button>
+  </div>
   <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
   <button class="btn next" id="next" type="button" hidden>Дальше</button>
 </main>
@@ -363,10 +532,20 @@
 (function(){
   'use strict';
 
+  var LEVELS = {
+    1: { max: 10, choice: true, penaltyEvery: 0 },
+    2: { max: 20, choice: true, penaltyEvery: 3, minAnswer: 11 },
+    3: { max: 20, choice: false, penaltyEvery: 2 }
+  };
+
+  var state = { level: 1, mistakes: 0, heartsDown: false };
   var score = 0;
   var locked = false;
+  var taskStartedAt = 0;
   var current = { a: 1, b: 7, op: '+', answer: 8 };
   var previousKey = '';
+  var usedKeys = {};
+  var POOLS = {};
 
   var $ = function(id){ return document.getElementById(id); };
 
@@ -375,7 +554,12 @@
   var elA = $('a');
   var elB = $('b');
   var elOp = $('op');
+  var levelsBox = $('levels');
+  var heartsEl = $('hearts');
   var optionsBox = $('options');
+  var answerRow = $('answerRow');
+  var answerInput = $('answerInput');
+  var checkBtn = $('check');
   var feedback = $('feedback');
   var nextBtn = $('next');
   var scoreEl = $('score');
@@ -394,39 +578,88 @@
     return arr;
   }
 
-  function makeTask(){
-    var a, b, op, answer, key;
-    do{
-      if(Math.random() < 0.5){
-        a = rand(1, 9);
-        b = rand(1, 10 - a);
-        op = '+';
-        answer = a + b;
-      }else{
-        a = rand(2, 10);
-        b = rand(1, a);
-        op = '−';
-        answer = a - b;
+  function buildPool(info){
+    var pool = [];
+    var minAnswer = info.minAnswer || 0;
+    var a, b, lo, hi;
+
+    for(a = 1; a <= info.max - 1; a++){
+      lo = Math.max(1, minAnswer - a);
+      hi = info.max - a;
+
+      for(b = lo; b <= hi; b++){
+        pool.push({ a: a, b: b, op: '+', answer: a + b, key: a + '+' + b });
       }
-      key = a + op + b;
-    }while(key === previousKey);
-    previousKey = key;
-    return { a: a, b: b, op: op, answer: answer };
+    }
+
+    for(a = 2; a <= info.max; a++){
+      hi = a - minAnswer;
+      if(hi > a){
+        hi = a;
+      }
+
+      for(b = 1; b <= hi; b++){
+        pool.push({ a: a, b: b, op: '−', answer: a - b, key: a + '−' + b });
+      }
+    }
+
+    return pool;
+  }
+
+  for(var levelKey in LEVELS){
+    POOLS[levelKey] = buildPool(LEVELS[levelKey]);
+  }
+
+  function pickTask(){
+    var pool = POOLS[state.level];
+    var available = [];
+    var i, task;
+
+    for(i = 0; i < pool.length; i++){
+      if(!usedKeys[pool[i].key]){
+        available.push(pool[i]);
+      }
+    }
+
+    if(!available.length){
+      usedKeys = {};
+      available = pool.slice();
+    }
+
+    if(available.length > 1){
+      var fresh = [];
+
+      for(i = 0; i < available.length; i++){
+        if(available[i].key !== previousKey){
+          fresh.push(available[i]);
+        }
+      }
+
+      if(fresh.length){
+        available = fresh;
+      }
+    }
+
+    task = available[Math.floor(Math.random() * available.length)];
+    usedKeys[task.key] = true;
+    previousKey = task.key;
+
+    return { a: task.a, b: task.b, op: task.op, answer: task.answer };
   }
 
   // Три неверных варианта рядом с ответом, без повторов и без чисел меньше нуля.
-  function buildOptions(answer){
+  function buildOptions(answer, max){
     var candidates = shuffle([answer + 1, answer - 1, answer + 2, answer - 2, answer + 3, answer - 3]);
     var wrong = [];
 
     candidates.forEach(function(v){
-      if(wrong.length < 3 && v >= 0 && v <= 10 && v !== answer && wrong.indexOf(v) < 0){
+      if(wrong.length < 3 && v >= 0 && v <= max && v !== answer && wrong.indexOf(v) < 0){
         wrong.push(v);
       }
     });
 
     while(wrong.length < 3){
-      var v = rand(0, 10);
+      var v = rand(0, max);
       if(v !== answer && wrong.indexOf(v) < 0){
         wrong.push(v);
       }
@@ -474,16 +707,137 @@
     nextBtn.hidden = true;
   }
 
+  function playHeartAnim(heart, cls){
+    heart.classList.remove(cls);
+    void heart.offsetWidth;
+    heart.classList.add(cls);
+
+    heart.addEventListener('animationend', function onEnd(){
+      heart.classList.remove(cls);
+      heart.removeEventListener('animationend', onEnd);
+    });
+  }
+
+  function syncHearts(){
+    var total = LEVELS[state.level].penaltyEvery;
+
+    if(total <= 0){
+      heartsEl.textContent = '';
+      heartsEl.removeAttribute('role');
+      heartsEl.removeAttribute('aria-label');
+      heartsEl.dataset.hearts = '0';
+      return;
+    }
+
+    var filled = total - state.mistakes;
+    if(filled < 0){
+      filled = 0;
+    }
+
+    if(heartsEl.dataset.hearts !== String(total)){
+      heartsEl.dataset.hearts = String(total);
+      heartsEl.className = 'hearts';
+      heartsEl.setAttribute('role', 'img');
+      heartsEl.innerHTML = '';
+
+      for(var i = 0; i < total; i++){
+        var heart = document.createElement('span');
+        var lost = i >= filled;
+
+        heart.className = lost ? 'heart lost' : 'heart';
+        heart.dataset.lost = lost ? '1' : '0';
+        heart.setAttribute('aria-hidden', 'true');
+        heart.textContent = '♥';
+        heartsEl.appendChild(heart);
+      }
+    }
+
+    var hearts = heartsEl.children;
+
+    for(var j = 0; j < hearts.length; j++){
+      var h = hearts[j];
+      var shouldLost = j >= filled;
+      var wasLost = h.dataset.lost === '1';
+
+      if(shouldLost && !wasLost){
+        h.classList.add('lost');
+        playHeartAnim(h, 'burn');
+      }else if(!shouldLost && wasLost){
+        h.classList.remove('lost');
+        playHeartAnim(h, 'return');
+      }
+
+      h.dataset.lost = shouldLost ? '1' : '0';
+    }
+
+    heartsEl.setAttribute('aria-label', 'жизни: ' + filled + ' из ' + total);
+  }
+
+  function registerMistake(){
+    var info = LEVELS[state.level];
+
+    if(info.penaltyEvery <= 0){
+      return false;
+    }
+
+    state.mistakes++;
+
+    if(state.mistakes < info.penaltyEvery){
+      syncHearts();
+      return false;
+    }
+
+    var penalty = false;
+
+    if(score > 0){
+      score--;
+      scoreEl.textContent = score;
+      penalty = true;
+    }
+
+    state.heartsDown = true;
+    syncHearts();
+    return penalty;
+  }
+
+  function syncLevelUi(){
+    var info = LEVELS[state.level];
+    optionsBox.hidden = !info.choice;
+    answerRow.hidden = info.choice;
+
+    Array.prototype.forEach.call(levelsBox.children, function(btn){
+      var on = Number(btn.getAttribute('data-level')) === state.level;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+
+    syncHearts();
+  }
+
   function newTask(){
-    current = makeTask();
+    var info = LEVELS[state.level];
+    current = pickTask();
     renderExample();
 
     example.classList.remove('pop');
     void example.offsetWidth;
     example.classList.add('pop');
 
-    renderOptions(buildOptions(current.answer));
+    answerInput.value = '';
+    answerInput.disabled = false;
+    checkBtn.disabled = false;
+
+    if(info.choice){
+      renderOptions(buildOptions(current.answer, info.max));
+    }else{
+      optionsBox.innerHTML = '';
+    }
+
+    optionsBox.hidden = !info.choice;
+    answerRow.hidden = info.choice;
     locked = false;
+    syncHearts();
+    taskStartedAt = Date.now();
   }
 
   function nextTask(){
@@ -491,8 +845,28 @@
     card.classList.remove('answered');
     feedback.className = 'feedback';
     feedback.textContent = '';
+
+    if(state.heartsDown){
+      state.heartsDown = false;
+      state.mistakes = 0;
+    }
+
     hideNext();
     newTask();
+  }
+
+  function setLevel(level){
+    if(level === state.level){
+      return;
+    }
+    state.level = level;
+    state.mistakes = 0;
+    state.heartsDown = false;
+    syncLevelUi();
+    nextTask();
+    if(!LEVELS[state.level].choice){
+      answerInput.focus();
+    }
   }
 
   function answerWith(chosen, btn){
@@ -502,28 +876,43 @@
     locked = true;
 
     var correct = chosen === current.answer;
-    var buttons = optionsBox.querySelectorAll('.opt');
 
-    Array.prototype.forEach.call(buttons, function(el){
-      el.disabled = true;
-      var value = Number(el.getAttribute('data-value'));
-      if(value === current.answer){
-        el.classList.add('ok');
-      }else if(el === btn){
-        el.classList.add('bad');
-      }
-    });
+    if(LEVELS[state.level].choice){
+      var buttons = optionsBox.querySelectorAll('.opt');
+
+      Array.prototype.forEach.call(buttons, function(el){
+        el.disabled = true;
+        var value = Number(el.getAttribute('data-value'));
+        if(value === current.answer){
+          el.classList.add('ok');
+        }else if(el === btn){
+          el.classList.add('bad');
+        }
+      });
+    }else{
+      answerInput.disabled = true;
+      checkBtn.disabled = true;
+      answerRow.hidden = true;
+    }
 
     if(correct){
       score += 1;
       scoreEl.textContent = score;
       bumpScore();
+      state.mistakes = 0;
+      state.heartsDown = false;
+      syncHearts();
     }
+
+    var penalty = correct ? false : registerMistake();
 
     feedback.className = 'feedback ' + (correct ? 'good' : 'bad');
     feedback.innerHTML = '';
     var main = document.createElement('span');
     main.textContent = correct ? 'Верно! Молодец!' : 'Не беда! Правильный ответ:';
+    if(penalty){
+      main.textContent += ' (−1 балл)';
+    }
     var eq = document.createElement('span');
     eq.className = 'fb-eq';
     eq.textContent = equationText();
@@ -532,7 +921,39 @@
 
     card.classList.add('answered');
     showNext();
+
+    if(window.ClockAccount){
+      window.ClockAccount.record('counter', null, state.level, correct,
+        String(chosen), String(current.answer),
+        taskStartedAt ? Date.now() - taskStartedAt : null);
+    }
   }
+
+  function submitTyped(){
+    if(locked){
+      return;
+    }
+
+    var raw = answerInput.value.replace(/\s+/g, '');
+    var max = LEVELS[state.level].max;
+
+    if(!/^\d{1,2}$/.test(raw) || Number(raw) > max){
+      feedback.className = 'feedback bad';
+      feedback.textContent = 'Введи число от 0 до ' + max + '.';
+      answerInput.focus();
+      return;
+    }
+
+    answerWith(Number(raw), null);
+  }
+
+  levelsBox.addEventListener('click', function(e){
+    var btn = e.target.closest('[data-level]');
+    if(!btn){
+      return;
+    }
+    setLevel(Number(btn.getAttribute('data-level')));
+  });
 
   optionsBox.addEventListener('click', function(e){
     var btn = e.target.closest('.opt');
@@ -542,11 +963,15 @@
     answerWith(Number(btn.getAttribute('data-value')), btn);
   });
 
+  checkBtn.addEventListener('click', submitTyped);
+
   nextBtn.addEventListener('click', nextTask);
 
   $('reset').addEventListener('click', function(){
     score = 0;
     scoreEl.textContent = '0';
+    state.mistakes = 0;
+    state.heartsDown = false;
     nextTask();
   });
 
@@ -561,6 +986,17 @@
       }
       return;
     }
+    if(!LEVELS[state.level].choice){
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        submitTyped();
+      }else if(/^\d$/.test(e.key) && document.activeElement !== answerInput){
+        e.preventDefault();
+        answerInput.focus();
+        answerInput.value = (answerInput.value + e.key).slice(0, 2);
+      }
+      return;
+    }
     var n = Number(e.key);
     if(n >= 1 && n <= 4){
       var btn = optionsBox.children[n - 1];
@@ -570,8 +1006,10 @@
     }
   });
 
+  syncLevelUi();
   newTask();
 })();
 </script>
+<script src="account.js"></script>
 </body>
 </html>

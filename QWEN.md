@@ -14,7 +14,9 @@ There is no framework, no bundler, no package manager, and no network calls. The
 | `app.js` | Everything else: builds the clock face, generates tasks, validates answers, manages score, mode switching and the help overlay. |
 | `styles.css` | All styling, animations, and the narrow-screen breakpoints (`max-width:440px`, `max-width:380px`). |
 
-Only the clock app is covered by OpenSpec (`openspec/specs/*`). `counter.html` is deliberately outside that workflow. Releases are annotated patch tags (`0.0.3` … `0.0.13`) placed after the user has checked the change by hand; commit messages are plain descriptive English sentences, and the repository has no CHANGELOG.
+Only the clock app and the arithmetic game are covered by OpenSpec (`openspec/specs/*`): the clock capabilities plus `counter-game`. Releases are annotated patch tags (`0.0.3` … `0.0.13`) placed after the user has checked the change by hand; commit messages are plain descriptive English sentences, and the repository has no CHANGELOG.
+
+A separate Rust service in `backend/` provides accounts, sessions, and answer statistics. Both pages load the shared `account.js` + `account.css` for an optional account (username + 4-digit PIN) and personal stats; the games still play without it. Its API is documented in Russian in `backend/README.md`; the service is self-contained under `backend/` and is not built by the static pages.
 
 ## Building and Running
 
@@ -25,6 +27,15 @@ python3 -m http.server 8000   # then open http://localhost:8000
 ```
 
 The arithmetic game is a sibling page at `http://localhost:8000/counter.html`; opening its file directly works too.
+
+The backend is a normal Cargo project and is not built by the static pages:
+
+```bash
+cd backend && cargo build --release
+BIND_ADDR=127.0.0.1:6021 DATABASE_PATH=data/clock_trainer.db ./target/release/clock-trainer-api
+```
+
+In production it runs as `clock-trainer-api.service` (user `loki`, `WorkingDirectory=backend/`, SQLite at `backend/data/clock_trainer.db`) and nginx proxies `https://gunlinux.ru/clock_trainer/api/` to `http://127.0.0.1:6021/` with the prefix stripped. The host toolchain is Ubuntu's Rust/Cargo 1.75, so backend dependency versions are pinned in `Cargo.toml`; keep them pinned unless the toolchain is upgraded.
 
 There are no tests, no linter, and no type checker. Verification is manual and performed by the user in a real browser: do not add Playwright, Puppeteer, Selenium, jsdom, DOM harnesses, or any other automated UI tests. Load the page and exercise each tab:
 
@@ -39,14 +50,17 @@ Check the console for errors after changing `app.js` — there is no other safet
 
 ## Second App: `counter.html`
 
-`counter.html` is a standalone arithmetic drill for children: «Учимся считать». It is one self-contained file — markup, CSS and JavaScript inline — and shares nothing with the clock app. Do not import `app.js` or `styles.css` into it, and do not move its styles into `styles.css`.
+`counter.html` is a standalone arithmetic drill for children: «Учимся считать». It is one self-contained file — markup, CSS and JavaScript inline — and shares no game logic with the clock app. It loads only the shared `account.js` + `account.css` for the optional account module; do not import `app.js` or `styles.css` into it, and do not move its styles into `styles.css`.
 
-- **Tasks.** Addition and subtraction with results in 0–10 (`a + b` where `a` is 1–9, or `a − b` with `a` 2–10). The same equation is never dealt twice in a row; `previousKey` enforces that.
-- **Answers.** Four large buttons, exactly one correct. `buildOptions()` prefers distractors at ±1…±3 around the answer, keeps all values within 0–10 and unique, then pads with random values if needed; `shuffle()` mixes them.
-- **Feedback.** A right answer increments the score and bumps `#score`; a wrong one is marked `.bad` while the correct button is always marked `.ok`. Both options are disabled, `card.answered` blocks pointer input, the message stays in `#feedback` and «Дальше» appears — the same no-auto-advance rule as the clock app.
-- **Input.** Clicking an option, pressing keys `1`–`4` to pick the matching option, and `Enter` to advance once the round is locked (modifier keys are ignored). «Сброс» zeroes the score and deals a new task.
-- **Styling.** Inline rules mirror the clock palette but are not shared; hover feedback lives in its own `@media (hover:hover)` block, animations in `@keyframes`, and `prefers-reduced-motion:reduce` disables them.
-- **State.** `score`, `locked`, `current` and `previousKey` in module scope inside a strict-mode IIFE; no persistence.
+- **Levels.** `LEVELS` maps each level to `{ max, choice, penaltyEvery }` (level 2 also sets `minAnswer: 11`): 1 (`10`, buttons, no hearts), 2 (`20`, buttons, answers 11–20, three hearts), 3 (`20`, typed answer, answers 0–20, two hearts). `state.level` is 1 at startup, changes immediately via the `.lvl` buttons and `setLevel()`, and is never persisted. Changing the level clears the feedback, restores the hearts and deals a new task without touching the score.
+- **Tasks.** Each level has a precomputed `POOLS` array: addition uses `a` 1…`max−1` and `b` from `max(1, minAnswer−a)` to `max−a`; subtraction uses `a` 2…`max` and `b` 1…`a−minAnswer`, so level 1 answers 0–10, level 2 answers 11–20, level 3 answers 0–20, and no result is negative. `pickTask()` draws an unused example; `usedKeys` is shared by all levels for the page session, so an equation never repeats until its level's pool is exhausted, then the history clears (with `previousKey` still blocking an immediate repeat). «Сброс» and level changes do not clear the history.
+- **Answers.** Levels 1–2 show four large buttons, exactly one correct. `buildOptions(answer, max)` prefers distractors at ±1…±3 around the answer, keeps all values within 0–`max` and unique, then pads with random values if needed; `shuffle()` mixes them.
+- **Typed answers.** Level 3 hides `#options` and shows `#answerRow` (`#answerInput` + «Проверить»). `submitTyped()` accepts only 1–2 digits whose value is at most `max`; empty or invalid input shows a hint in `#feedback` without locking the round or showing «Дальше». A valid value goes through the same `answerWith()` path and then hides the input row.
+- **Hearts.** `penaltyEvery` is both the heart count and the penalty threshold: 0/3/2 for levels 1–3. A wrong answer increments `state.mistakes` and burns one heart; when the count reaches the threshold the score drops by one (never below zero), the message gains «(−1 балл)», and `state.heartsDown` makes `nextTask()` refill the hearts. A correct answer resets `state.mistakes` and refills every heart; partial burns persist across tasks otherwise.
+- **Feedback.** A right answer increments the score and bumps `#score`; a wrong one is marked `.bad` while the correct button is always marked `.ok`. On level 3 there are no buttons, so the message names the correct answer. The message stays in `#feedback` and «Дальше» appears — the same no-auto-advance rule as the clock app.
+- **Input.** Clicking an option, pressing keys `1`–`4` to pick the matching option (levels 1–2 only), `Enter` to submit typed input or to advance once the round is locked (modifier keys are ignored). On level 3 the global key handler lets digits reach `#answerInput`. «Сброс» zeroes the score and deals a new task.
+- **Styling.** Inline rules mirror the clock palette but are not shared; hover feedback lives in its own `@media (hover:hover)` block (level buttons only when not `.active`, the check button only when enabled), hearts reuse the clock's `burn`/`return` keyframes inline, and `prefers-reduced-motion:reduce` disables every animation.
+- **State.** `state` (`level`, `mistakes`, `heartsDown`), `score`, `locked`, `current`, `previousKey` and `usedKeys` in module scope inside a strict-mode IIFE; no persistence.
 
 Any change here is verified by hand in a real browser exactly like the clock app: no Playwright, Puppeteer, Selenium, jsdom or DOM harnesses.
 
