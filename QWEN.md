@@ -4,17 +4,17 @@ Instructional context for working in this repository.
 
 ## Project Overview
 
-A single-page, dependency-free web app for teaching children to read an analog clock. The UI is entirely in Russian (`<html lang="ru">`, title "Учимся читать время").
+The repository holds two independent, dependency-free pages for children, both entirely in Russian. The main one is a single-page app for teaching how to read an analog clock (`<html lang="ru">`, title "Учимся читать время"). Alongside it sits `counter.html`, a separate mental-arithmetic game «Учимся считать» described under "Second App: `counter.html`".
 
-There is no framework, no bundler, no package manager, and no network calls. It is three static files loaded directly by the browser:
+There is no framework, no bundler, no package manager, and no network calls. The clock app is three static files loaded directly by the browser:
 
 | File | Role |
 | --- | --- |
 | `index.html` | Static markup for the header (score, «Сброс», «Помощь»), the three mode tabs, the SVG clock, one panel per mode, and the help overlay. |
 | `app.js` | Everything else: builds the clock face, generates tasks, validates answers, manages score, mode switching and the help overlay. |
-| `styles.css` | All styling, animations, and the `@media (max-width:440px)` / `@media (max-width:380px)` breakpoints. |
+| `styles.css` | All styling, animations, and the narrow-screen breakpoints (`max-width:440px`, `max-width:380px`). |
 
-Git history is a single commit (`initial`), so there is no established commit-message convention to infer.
+Only the clock app is covered by OpenSpec (`openspec/specs/*`). `counter.html` is deliberately outside that workflow. Releases are annotated patch tags (`0.0.3` … `0.0.13`) placed after the user has checked the change by hand; commit messages are plain descriptive English sentences, and the repository has no CHANGELOG.
 
 ## Building and Running
 
@@ -23,6 +23,8 @@ No build step exists. Open `index.html` directly, or serve the folder to avoid a
 ```bash
 python3 -m http.server 8000   # then open http://localhost:8000
 ```
+
+The arithmetic game is a sibling page at `http://localhost:8000/counter.html`; opening its file directly works too.
 
 There are no tests, no linter, and no type checker. Verification is manual and performed by the user in a real browser: do not add Playwright, Puppeteer, Selenium, jsdom, DOM harnesses, or any other automated UI tests. Load the page and exercise each tab:
 
@@ -34,6 +36,19 @@ There are no tests, no linter, and no type checker. Verification is manual and p
 6. **Помощь** — the header button opens `clock_help.png` full-screen over the app; the whole image is contained, a click/tap anywhere or `Esc` closes it. Opening or closing help must not change the task, hands, typed values, score, hearts, visible feedback or «Дальше»; page scroll is locked while it is open.
 
 Check the console for errors after changing `app.js` — there is no other safety net.
+
+## Second App: `counter.html`
+
+`counter.html` is a standalone arithmetic drill for children: «Учимся считать». It is one self-contained file — markup, CSS and JavaScript inline — and shares nothing with the clock app. Do not import `app.js` or `styles.css` into it, and do not move its styles into `styles.css`.
+
+- **Tasks.** Addition and subtraction with results in 0–10 (`a + b` where `a` is 1–9, or `a − b` with `a` 2–10). The same equation is never dealt twice in a row; `previousKey` enforces that.
+- **Answers.** Four large buttons, exactly one correct. `buildOptions()` prefers distractors at ±1…±3 around the answer, keeps all values within 0–10 and unique, then pads with random values if needed; `shuffle()` mixes them.
+- **Feedback.** A right answer increments the score and bumps `#score`; a wrong one is marked `.bad` while the correct button is always marked `.ok`. Both options are disabled, `card.answered` blocks pointer input, the message stays in `#feedback` and «Дальше» appears — the same no-auto-advance rule as the clock app.
+- **Input.** Clicking an option, pressing keys `1`–`4` to pick the matching option, and `Enter` to advance once the round is locked (modifier keys are ignored). «Сброс» zeroes the score and deals a new task.
+- **Styling.** Inline rules mirror the clock palette but are not shared; hover feedback lives in its own `@media (hover:hover)` block, animations in `@keyframes`, and `prefers-reduced-motion:reduce` disables them.
+- **State.** `score`, `locked`, `current` and `previousKey` in module scope inside a strict-mode IIFE; no persistence.
+
+Any change here is verified by hand in a real browser exactly like the clock app: no Playwright, Puppeteer, Selenium, jsdom or DOM harnesses.
 
 ## Architecture and Data Flow
 
@@ -77,7 +92,7 @@ If you add a rule that compares times, compare `visualKey`s or explicitly justif
 
 **Number formatting.** Minutes are always zero-padded via `pad()`; angular values in SVG attributes are `.toFixed(2)`.
 
-**CSS.** Compact single-line rule blocks, no spaces after property colons (`display:flex;`), lowercase hex, colors drawn from a slate/indigo/violet palette (`#6366f1`, `#8b5cf6`, `#1e293b`, `#f8fafc`). Layout is centered, `max-width: 520px`, mobile-first with the clock sized `min(280px, 70vw)`. Interactive elements use `:active` scale-down feedback rather than hover.
+**CSS.** Compact single-line rule blocks, no spaces after property colons (`display:flex;`), lowercase hex, colors drawn from a slate/indigo/violet palette (`#6366f1`, `#8b5cf6`, `#1e293b`, `#f8fafc`). Layout is centered, `max-width: 520px`, mobile-first with the clock sized `min(280px, 70vw)`. Interactive elements use `:active` scale-down feedback plus hover feedback inside `@media (hover:hover)`: answer options lift 2px with an indigo tint, primary/«Дальше» buttons darken and lift 1px, and the reset/direction buttons get an indigo background. Hover must stay behind the media query and must exclude disabled options (`.opt:not(:disabled):hover`).
 
 **Content.** All user-facing strings are Russian and informal second person singular ("Введи часы и минуты", "Который час показывают стрелки?"). Keep new copy in Russian and in that voice; keep code comments Russian or English as the surrounding lines do.
 
@@ -116,3 +131,4 @@ Mode switching is generic (`data-mode`, `#panelN`, `state.mode`), so no extra wi
 - The help overlay hides via `.open`/`.closing`, not the `hidden` attribute, and `body.help-open` carries `overflow:hidden`; keep `resetHelp()` as the single place that clears the classes, `inert`, `aria-expanded` and the scroll lock.
 - If `prefers-reduced-motion:reduce` is set, `closeHelp()` skips the closing animation and hides the overlay immediately; a new animation name must not break the `help-out` check in the `animationend` handler.
 - The header becomes two rows below 440px so the third pill («Помощь») does not squeeze the title; keep new header controls inside `.hgroup` so that breakpoint still applies.
+- `counter.html` is a separate product: its styles and script are inline, it does not load `app.js` or `styles.css`, and clock concepts (`visualKey`, the 720-minute cycle, `dualLabel`, hearts, mode tabs) must not leak into it. Refactors of the clock files must leave it untouched.
