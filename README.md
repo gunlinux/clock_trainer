@@ -60,10 +60,10 @@ python3 -m http.server 8000
 
 ## Сервер: аккаунты и статистика
 
-В каталоге `backend/` — служба на Rust (Axum + SQLite) для регистрации по имени и четырёхзначному PIN, сессий и статистики ответов. Наружу она отдаётся через nginx по адресу <https://gunlinux.ru/clock_trainer/api/>, а локально слушает только `127.0.0.1:6021`.
+В каталоге `backend/` — служба на Rust (Axum + SQLite) для регистрации по имени и четырёхзначному PIN, сессий и статистики ответов. Страницы и API отдаются через nginx на отдельном хосте <https://clock.gunlinux.ru/>: игры — в корне (`/`, `/counter.html`), API — по адресу <https://clock.gunlinux.ru/api/>. Локально служба слушает только `127.0.0.1:6021`.
 
 ```bash
-curl https://gunlinux.ru/clock_trainer/api/health
+curl https://clock.gunlinux.ru/api/health
 sudo systemctl status clock-trainer-api
 ```
 

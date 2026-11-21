@@ -35,7 +35,7 @@ cd backend && cargo build --release
 BIND_ADDR=127.0.0.1:6021 DATABASE_PATH=data/clock_trainer.db ./target/release/clock-trainer-api
 ```
 
-In production it runs as `clock-trainer-api.service` (user `loki`, `WorkingDirectory=backend/`, SQLite at `backend/data/clock_trainer.db`) and nginx proxies `https://gunlinux.ru/clock_trainer/api/` to `http://127.0.0.1:6021/` with the prefix stripped. The host toolchain is Ubuntu's Rust/Cargo 1.75, so backend dependency versions are pinned in `Cargo.toml`; keep them pinned unless the toolchain is upgraded.
+In production it runs as `clock-trainer-api.service` (user `loki`, `WorkingDirectory=backend/`, SQLite at `backend/data/clock_trainer.db`) and the nginx vhost `clock.gunlinux.ru` serves the static pages at `/` and proxies `https://clock.gunlinux.ru/api/` to `http://127.0.0.1:6021/` with the prefix stripped. The host toolchain is Ubuntu's Rust/Cargo 1.75, so backend dependency versions are pinned in `Cargo.toml`; keep them pinned unless the toolchain is upgraded.
 
 There are no tests, no linter, and no type checker. Verification is manual and performed by the user in a real browser: do not add Playwright, Puppeteer, Selenium, jsdom, DOM harnesses, or any other automated UI tests. Load the page and exercise each tab:
 

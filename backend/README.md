@@ -3,7 +3,7 @@
 Небольшой сервер на Rust для аккаунтов и статистики двух игр. Обе страницы уже подключены к API через общий модуль `account.js`, но вход остаётся необязательным: без аккаунта игры работают как раньше.
 
 - **Стек:** Rust (Axum), SQLite (rusqlite со встроенным SQLite), Argon2 для PIN.
-- **Адрес:** `127.0.0.1:6021`; наружу отдаётся через nginx по `/clock_trainer/api/`.
+- **Адрес:** `127.0.0.1:6021`; наружу отдаётся через nginx по `https://clock.gunlinux.ru/api/`.
 - **База:** `/home/loki/www/clock_trainer/backend/data/clock_trainer.db` (WAL, права `700`).
 - **Служба:** `clock-trainer-api.service` (systemd, пользователь `loki`).
 
@@ -34,13 +34,13 @@ sudo journalctl -u clock-trainer-api -n 50 --no-pager
 nginx проксирует префикс со срезанием:
 
 ```nginx
-location /clock_trainer/api/ {
+location /api/ {
   proxy_pass http://127.0.0.1:6021/;
   ...
 }
 ```
 
-Поэтому снаружи `https://gunlinux.ru/clock_trainer/api/health` — это `GET /health` на сервере.
+Поэтому снаружи `https://clock.gunlinux.ru/api/health` — это `GET /health` на сервере.
 
 ## Аккаунты и сессии
 
@@ -126,7 +126,7 @@ location /clock_trainer/api/ {
 
 - Кнопка **Войти** в шапке открывает окно с вкладками «Вход» и «Регистрация»; после входа там же показывается статистика (ответы, точность, серия, время, разбивка по играм и последним дням).
 - Токен хранится в `localStorage` под ключом `clockTrainerAccount` и общий для обеих страниц. «Выйти» закрывает сессию и на сервере.
-- Запросы идут на относительный `api/`, то есть со страницы `/clock_trainer/` на `/clock_trainer/api/`. Для другого адреса задайте `window.CLOCK_API_BASE` перед подключением `account.js`.
+- Запросы идут на относительный `api/`, то есть со страницы `/` на `/api/` хоста `clock.gunlinux.ru`. Для другого адреса задайте `window.CLOCK_API_BASE` перед подключением `account.js`.
 - Каждый проверенный ответ отправляется в `POST /answers`:
 
 | Игра | `game` | `mode` | `given` | `expected` |
